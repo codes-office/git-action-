@@ -66,6 +66,7 @@ Route::namespace ('Api')->middleware(['throttle', 'auth:api'])->group(function (
 	Route::post('/accept-ride-request', 'DriversApi@accept_ride_request');
 	Route::post('/cancel-ride-request', 'DriversApi@cancel_ride_request');
 	Route::post('/reject-ride-request', 'DriversApi@reject_ride_request');
+
 	
 // 	Route::post('/driver-rides', 'DriversApi@driver_rides');
 	Route::post('/upcoming-rides', 'DriversApi@upcomingRides');
@@ -78,6 +79,7 @@ Route::namespace ('Api')->middleware(['throttle', 'auth:api'])->group(function (
 	Route::post('/destination-reached', 'DriversApi@destination_reached');
 	Route::post('/confirm-payment', 'DriversApi@confirm_payment');
 	Route::post('/active-drivers', 'DriversApi@active_drivers');
+	Route::post('/driver_status','DriversApi@is_DriverActive');
 	Route::post('update-fcm-token', 'UsersApi@update_fcm');
 
 	// live location api

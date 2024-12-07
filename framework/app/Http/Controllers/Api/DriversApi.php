@@ -1472,6 +1472,53 @@ public function destination_reached(Request $request) {
 		}
 
 	}
+	public function is_DriverActive(Request $request) {
+		try {
+			// Validate the incoming request to ensure a driver ID and is_active are provided
+			$request->validate([
+				'user_id' => 'required|integer|exists:users,id', // Ensure the user exists
+				'is_active' => 'required|in:0,1', // Ensure the availability is either 0 (inactive) or 1 (active)
+			]);
+	
+			// Find the driver by user ID
+			$driver = User::find($request->get('user_id'));
+	
+			if ($driver) {
+				// Check if the current status is different from the requested one
+				if ($driver->is_active == $request->get('is_active')) {
+					// If the current status is the same as the requested status
+					$status = $request->get('is_active') == 0 ? 'already Offline' : 'already Online';
+	
+					$data['success'] = 1;
+					$data['message'] = "You are " . $status . ". No changes were made.";
+				} else {
+					// If the status is different, change it
+					$driver->is_active = $request->get('is_active');
+					$driver->save();
+	
+					$status = $request->get('is_active') == 0 ? 'Offline' : 'Online';
+	
+					$data['success'] = 1;
+					$data['message'] = "You are now " . $status;
+				}
+	
+				$data['data'] = ""; // Optionally, include driver data if needed
+			} else {
+				// If the driver is not found (though validation ensures existence, double-check here)
+				$data['success'] = 0;
+				$data['message'] = "Driver not found.";
+				$data['data'] = "";
+			}
+		 }
+		catch (\Exception $e) {
+			// Handle any unexpected exceptions
+			$data['success'] = 0;
+			$data['message'] = "An error occurred: " . $e->getMessage();
+			$data['data'] = "";
+		}
+	
+		return response()->json($data); // Return the response as JSON
+	}
 
 	public function active_drivers() {
 
