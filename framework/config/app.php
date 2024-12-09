@@ -14,7 +14,7 @@ return [
     'env' => "local",
     'debug' => false,
     'url' => env('APP_URL'),
-    'timezone' => 'UTC',
+    'timezone' => 'Asia/Kolkata',
     'locale' => 'English-en',
     'fallback_locale' => 'English-en',
     'faker_locale' => env('FAKER_LOCALE', 'en_US'),

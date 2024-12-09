@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Auth as Login;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Validator;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class UsersApi extends Controller {
@@ -1330,15 +1331,7 @@ $pickupTime = now()->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s');
 		$destlongitude = $request->get('dest_long');
     }
 
-	$book = Bookings::find($booking->id);
-	$book->pickup_lat = $pickuplatitude; //0=yet to accept, 1= accept
-	$book->pickup_long = $pickuplongitude;
-	$book->dest_lat = $destlatitude;
-	$book->dest_long = $destlongitude;	
-	$book->ride_status = null;
-	$book->accept_status= 0;
-	$book->booking_type = 1;
-	$book->save();
+
 
     // Create booking record
     $booking = Bookings::create([
@@ -1363,6 +1356,18 @@ $pickupTime = now()->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s');
         'ride_status' => null,
         'booking_type' => $request->get('booking_type'), // booking type
     ]);
+
+	$book = Bookings::find($booking->id);
+	$book->source_time = $pickupTime;
+	$book->pickup_lat = $pickuplatitude; 
+	$book->pickup_long = $pickuplongitude;
+	$book->dest_lat = $destlatitude;
+	$book->dest_long = $destlongitude;	
+	$book->ride_status = null;
+	$book->accept_status= 0;
+	$book->booking_type = 1;
+	$book->save();
+	
 	 Log::info('New Booking Created', [
         'user_id' => $user->id,
         'user_name' => $user->name,
@@ -1429,44 +1434,159 @@ $pickupTime = now()->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s');
 //     return response()->json(['success' => 1, 'message' => "Your Request has been Submitted Successfully.", 'data' => ['booking_id' => $booking->id]], 201);
 // }
 
-public function book_later(Request $request) {
+// public function book_later(Request $request) {
+//     // Validate the request
+//     $validation = Validator::make($request->all(), [
+//         'source_address' => 'required',
+//         'dest_address' => 'required',
+//         'no_of_persons' => 'required|integer|min:1',
+//         'journey_date' => 'required|date_format:Y-m-d',
+//         'journey_time' => 'required|date_format:H:i',
+//         'vehicle_typeid' => 'required|integer',
+//     ]);
+
+//     if ($validation->fails()) {
+//         return response()->json(['success' => 0, 'message' => "Unable to Process your Ride Request. Please, Try again Later!", 'errors' => $validation->errors()], 422);
+//     }
+
+//     // Create booking record
+//     $booking = Bookings::create([
+//         'customer_id' => $request->get('user_id'),
+//         'pickup_addr' => $request->get('source_address'),
+//         'dest_addr' => $request->get('dest_address'),
+//         'travellers' => $request->get('no_of_persons'),
+//         'fcm_id' => $request->get('fcm_id'),
+//         'source_lat' => $request->get('source_lat'),
+//         'source_long' => $request->get('source_long'),
+//         'dest_lat' => $request->get('dest_lat'),
+//         'dest_long' => $request->get('dest_long'),
+//         'journey_date' => $request->get('journey_date'),
+//         'journey_time' => $request->get('journey_time'),
+//         'booking_type' => 1, // 1 for booking later
+//         'accept_status' => 0, // 0 = yet to accept
+//         'ride_status' => null,
+//         'vehicle_typeid' => $request->vehicle_typeid,
+//     ]);
+
+//     // Send notification (optional)
+//     $this->book_later_notification($booking->id, $request->vehicle_typeid);
+
+//     return response()->json(['success' => 1, 'message' => "Your Request has been Submitted Successfully.", 'data' => ['booking_id' => $booking->id]], 201);
+// }
+
+
+
+
+public function book_later(Request $request)
+{
+	
     // Validate the request
     $validation = Validator::make($request->all(), [
-        'source_address' => 'required',
-        'dest_address' => 'required',
-        'no_of_persons' => 'required|integer|min:1',
-        'journey_date' => 'required|date_format:Y-m-d',
-        'journey_time' => 'required|date_format:H:i',
-        'vehicle_typeid' => 'required|integer',
+        'user_id' => 'required|exists:users,id',
+        'booking_type' => 'required|in:Home,Office,RAC',
+        'time' => 'required', // Validate the time
+        'booking_details' => 'required|array', // Validate booking_details as an array
+        'booking_details.*.date' => 'required|date', // Validate each date in the array
     ]);
 
     if ($validation->fails()) {
-        return response()->json(['success' => 0, 'message' => "Unable to Process your Ride Request. Please, Try again Later!", 'errors' => $validation->errors()], 422);
+        return response()->json([
+            'success' => 0,
+            'message' => "Unable to Process your Ride Request. Please, Try again Later!",
+            'errors' => $validation->errors()
+        ], 422);
     }
 
-    // Create booking record
-    $booking = Bookings::create([
-        'customer_id' => $request->get('user_id'),
-        'pickup_addr' => $request->get('source_address'),
-        'dest_addr' => $request->get('dest_address'),
-        'travellers' => $request->get('no_of_persons'),
-        'fcm_id' => $request->get('fcm_id'),
-        'source_lat' => $request->get('source_lat'),
-        'source_long' => $request->get('source_long'),
-        'dest_lat' => $request->get('dest_lat'),
-        'dest_long' => $request->get('dest_long'),
-        'journey_date' => $request->get('journey_date'),
-        'journey_time' => $request->get('journey_time'),
-        'booking_type' => 1, // 1 for booking later
-        'accept_status' => 0, // 0 = yet to accept
-        'ride_status' => null,
-        'vehicle_typeid' => $request->vehicle_typeid,
-    ]);
+    // Fetch the user and addresses
+    $user = User::find($request->get('user_id'));
+    $homeAddress = $user->address;
+    $homeLongitude = $user->getMeta('emsourcelat');
+    $homeLatitude = $user->getMeta('emsourcelong');
 
-    // Send notification (optional)
-    $this->book_later_notification($booking->id, $request->vehicle_typeid);
+    $officeAddress = $user->assigned_admin
+        ? User::find($user->assigned_admin)->address ?? 'No Admin Assigned'
+        : 'Company Not Assigned';
+    $officeLongitude = $user->assigned_admin
+        ? User::find($user->assigned_admin)->getMeta('emsourcelat') ?? 'No Admin Assigned'
+        : 'Company Not Assigned';
+    $officeLatitude = $user->assigned_admin
+        ? User::find($user->assigned_admin)->getMeta('emsourcelong') ?? 'No Admin Assigned'
+        : 'Company Not Assigned';
 
-    return response()->json(['success' => 1, 'message' => "Your Request has been Submitted Successfully.", 'data' => ['booking_id' => $booking->id]], 201);
+    // Determine pickup and destination based on booking_type
+    if ($request->get('booking_type') === 'Home') {
+        $pickupAddress = $officeAddress;
+        $pickupLatitude = $officeLatitude;
+        $pickupLongitude = $officeLongitude;
+        $destAddress = $homeAddress;
+        $destLatitude = $homeLatitude;
+        $destLongitude = $homeLongitude;
+    } elseif ($request->get('booking_type') === 'Office') {
+        $pickupAddress = $homeAddress;
+        $pickupLatitude = $homeLatitude;
+        $pickupLongitude = $homeLongitude;
+        $destAddress = $officeAddress;
+        $destLatitude = $officeLatitude;
+        $destLongitude = $officeLongitude;
+    } else {
+        $pickupAddress = $request->get('source_address');
+        $pickupLatitude = $request->get('source_lat');
+        $pickupLongitude = $request->get('source_long');
+        $destAddress = $request->get('dest_address');
+        $destLatitude = $request->get('dest_lat');
+        $destLongitude = $request->get('dest_long');
+    }
+
+    // Create a booking for each date
+    $bookings = [];
+    foreach ($request->get('booking_details') as $detail) {
+        // Combine the provided date with the fixed time
+       
+		$pickupTime = $request->get('date'). ''.$request->get('time');
+       Log::info($pickupTime);
+	   
+        // Create the booking record
+        $booking = Bookings::create([           
+            'customer_id' => json_encode([(string)$user->id]), // Store user_id as a JSON array of strings
+			'pickup_addr' => $pickupAddress,
+			'pickup_lat' => $pickupLatitude,
+			'pickup_long' => $pickupLongitude,
+			'dest_addr' => $destAddress,
+			'dest_lat' => $destLatitude,
+			'dest_long' => $destLongitude,			
+			'pickup' => $pickupTime , // Stores current date and time
+            'accept_status' => 0,
+            'ride_status' => null,
+            'booking_type' => $request->get('booking_type'),
+        ]);
+
+        // Log each booking
+        Log::info('New Booking Created', [
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'booking_id' => $booking->id,
+            'pickup_address' => $pickupAddress,
+            'pickup_lat' => $pickupLatitude,
+            'pickup_long' => $pickupLongitude,
+            'destination_address' => $destAddress,
+            'destination_lat' => $destLatitude,
+            'destination_long' => $destLongitude,
+            'pickup_time' => $pickupTime,
+       
+            'booking_type' => $request->get('booking_type'),
+        ]);
+
+     
+
+        $bookings[] = $booking->id;
+    }
+
+    // Return success response with all booking IDs
+    return response()->json([
+        'success' => 1,
+        'message' => "Your Requests have been Submitted Successfully.",
+        'data' => ['booking_ids' => $bookings]
+    ], 201);
 }
 
 	public function update_destination(Request $request) {
