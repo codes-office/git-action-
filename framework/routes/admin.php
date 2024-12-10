@@ -200,6 +200,8 @@ Route::namespace ('Admin')->group(function () {
         Route::get("/vehicles/enable/{id}", 'VehiclesController@enable');
         Route::get("/vehicles/disable/{id}", 'VehiclesController@disable');
         Route::post('/bookings-fetch', 'BookingsController@fetch_data');
+        Route::get('/map','BookingsController@map')->name('map.index');
+
         Route::post('/driver-bookings-fetch', 'DriversController@fetch_bookings_data');
         Route::resource('/bookings', 'BookingsController');
         Route::post('/prev-address', 'BookingsController@prev_address');

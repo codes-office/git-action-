@@ -976,6 +976,14 @@ input:checked + .slider:before {
                         @lang('menu.manage_bookings')</p>
                     </a>
                   </li>
+                  <li class="nav-item">
+              <a href="{{ route('map.index') }}" 
+                  class="nav-link @if(Request::is('admin/map*')) active @endif">
+                    <i class="fa fa-map nav-icon"></i>
+                    <p>Map</p>
+                    </a>
+                    </li>
+
                   <!--<li class="nav-item">-->
                   <!--  <a href="{{ url('admin/transactions') }}"-->
                   <!--    class="nav-link @if((Request::is('admin/transactions'))) active @endif">-->

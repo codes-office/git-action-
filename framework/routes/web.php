@@ -107,6 +107,8 @@ Route::get('sample-payment', function () {
     return view('payments.test_pay');
 });
 
+
+
 // Route::post('redirect-payment', 'PaymentController@redirect_payment');
 
 // Route::get('all-data', function () {
