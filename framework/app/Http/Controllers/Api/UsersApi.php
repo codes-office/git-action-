@@ -1540,11 +1540,15 @@ public function book_later(Request $request)
     // Create a booking for each date
     $bookings = [];
     foreach ($request->get('booking_details') as $detail) {
-        // Combine the provided date with the fixed time
-       
-		$pickupTime = $request->get('date'). ''.$request->get('time');
-       Log::info($pickupTime);
-	   
+       // Extract the date for the current booking
+    $currentDate = $detail['date'];
+    
+    // Combine the extracted date with the fixed time
+    $pickupTime = $currentDate . ' ' . $request->get('time');
+
+    // Log the pickup time for 	 debugging
+    Log::info("Booking for date: $currentDate, Time: " . $request->get('time'));
+    Log::info("Full Pickup Time: $pickupTime");
         // Create the booking record
         $booking = Bookings::create([           
             'customer_id' => json_encode([(string)$user->id]), // Store user_id as a JSON array of strings
@@ -1559,7 +1563,17 @@ public function book_later(Request $request)
             'ride_status' => null,
             'booking_type' => $request->get('booking_type'),
         ]);
-
+		$book = Bookings::find($booking->id);
+		$book->source_time = $pickupTime;
+		$book->pickup_lat = $pickupLatitude; 
+		$book->pickup_long = $pickupLongitude;
+		$book->dest_lat = $destLatitude;
+		$book->dest_long = $destLongitude;	
+		$book->ride_status = null;
+		$book->accept_status= 0;
+		$book->booking_type = 1;
+		$book->save();
+		
         // Log each booking
         Log::info('New Booking Created', [
             'user_id' => $user->id,
@@ -1571,7 +1585,7 @@ public function book_later(Request $request)
             'destination_address' => $destAddress,
             'destination_lat' => $destLatitude,
             'destination_long' => $destLongitude,
-            'pickup_time' => $pickupTime,
+            'pickup_time' => $pickupTime,		
        
             'booking_type' => $request->get('booking_type'),
         ]);
@@ -1772,7 +1786,7 @@ public function ride_history(Request $request) {
         $query->where('customer_id', $id)
               ->orWhereJsonContains('customer_id', (string) $id); // casting to string for JSON search compatibility
     })->get();
-
+ 
     if ($bookings->isNotEmpty()) {
         $data['success'] = 1;
         $data['message'] = "Data Received.";
@@ -1791,9 +1805,9 @@ public function ride_history(Request $request) {
                 'book_date' => date('Y-m-d', strtotime($book->created_at)),
                 'book_time' => date('H:i:s', strtotime($book->created_at)),
                 'source_address' => $book->pickup_addr,
-                'source_time' => date('Y-m-d H:i:s', strtotime($book->getMeta('ridestart_timestamp'))),
+                'pickup_time' =>$book->pickup,
                 'dest_address' => $book->dest_addr,
-                'dest_time' => date('Y-m-d H:i:s', strtotime($book->getMeta('rideend_timestamp'))),
+                // 'dest_time' => date('Y-m-d H:i:s', strtotime($book->getMeta('rideend_timestamp'))),
                 'driving_time' => $book->getMeta('driving_time'),
                 'total_kms' => $total_kms,
                 // 'amount' => $book->getMeta('total'),
