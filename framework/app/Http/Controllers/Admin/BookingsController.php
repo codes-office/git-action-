@@ -1268,7 +1268,7 @@ class BookingsController extends Controller
 		$driver = User::find($booking->driver_id);
 		
 		if (true) {
-			$firebaseService = new \App\Services\FirebaseService();
+			$firebaseService = new \App\services\FirebaseService();
 			
 			$title = "New Upcoming Ride Assigned!";
 			$body = "You have a new ride. Please check your dashboard for details.";
