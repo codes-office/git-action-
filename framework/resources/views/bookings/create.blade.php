@@ -71,6 +71,8 @@
                                 </select>
                             </div>
                         </div>
+                        
+
                         <div class="col-md-4">
                             <div class="form-group">
                                 {!! Form::label('pickup', __('fleet.pickup'), ['class' => 'form-label']) !!}
@@ -141,6 +143,295 @@
                             </div>
                         </div>
                     </div>
+                  
+
+                    {{-- <div class="container mt-5">
+                        <div class="card p-4 shadow-sm">
+                            <h3 class="mb-4">Towards</h3>
+                    
+                            <!-- Radio Buttons for Home, Office, and RAC -->
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="booking_type" id="home_radio" value="Home">
+                                <label class="form-check-label" for="home_radio">Home</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="booking_type" id="office_radio" value="Office">
+                                <label class="form-check-label" for="office_radio">Office</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="booking_type" id="rac_radio" value="RAC">
+                                <label class="form-check-label" for="rac_radio">RAC</label>
+                            </div>
+                    
+                            <!-- Route Display Section -->
+                            <div id="route_display" class="mt-3" style="display: none;">
+                                <div class="alert alert-info fade" id="route_text"></div>
+                            </div>
+                    
+                            <!-- Google Maps for Pickup and Drop-off for RAC -->
+                            <div id="google_maps_section" class="mt-3" style="display: none;">
+                                <div class="form-group">
+                                    <label for="pickup_location">Pickup Location</label>
+                                    <input type="text" id="pickup_location" class="form-control" placeholder="Pickup Location" readonly>
+                                    <div id="pickup_map" style="height: 300px; margin-top: 10px;"></div>
+                                </div>
+                                <div class="form-group mt-2">
+                                    <label for="dropoff_location">Drop-off Location</label>
+                                    <input type="text" id="dropoff_location" class="form-control" placeholder="Drop-off Location" readonly>
+                                    <div id="dropoff_map" style="height: 300px;  margin-top: 10px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <script src="https://maps.googleapis.com/maps/api/js?key={{ Hyvikk::api('api_key') }}&callback=initMap" async defer></script>
+                    <script>
+                        var pickupMap, dropoffMap;
+                        var pickupMarker, dropoffMarker;
+                    
+                        function initMap() {
+                            // Check if geolocation is available in the user's browser
+                            if (navigator.geolocation) {
+                                navigator.geolocation.getCurrentPosition(function (position) {
+                                    var userLat = position.coords.latitude;
+                                    var userLng = position.coords.longitude;
+                    
+                                    // Initialize the map for pickup and drop-off locations centered on the user's location
+                                    pickupMap = new google.maps.Map(document.getElementById("pickup_map"), {
+                                        center: { lat: userLat, lng: userLng },
+                                        zoom: 13,
+                                    });
+                                    dropoffMap = new google.maps.Map(document.getElementById("dropoff_map"), {
+                                        center: { lat: userLat, lng: userLng },
+                                        zoom: 13,
+                                    });
+                    
+                                    // Add markers to the pickup and drop-off maps for the user's location
+                                    pickupMarker = new google.maps.Marker({
+                                        position: { lat: userLat, lng: userLng },
+                                        map: pickupMap,
+                                        title: "Your Location",
+                                    });
+                    
+                                    dropoffMarker = new google.maps.Marker({
+                                        position: { lat: userLat, lng: userLng },
+                                        map: dropoffMap,
+                                        title: "Your Location",
+                                    });
+                    
+                                    // Handle click on the pickup map to update the text area
+                                    pickupMap.addListener("click", function (e) {
+                                        if (pickupMarker) pickupMarker.setMap(null); // Remove existing marker
+                                        var latLng = e.latLng;
+                                        pickupMarker = new google.maps.Marker({
+                                            position: latLng,
+                                            map: pickupMap,
+                                        });
+                                        document.getElementById("pickup_location").value = "Lat: " + latLng.lat() + ", Lng: " + latLng.lng();
+                                    });
+                    
+                                    // Handle click on the dropoff map to update the text area
+                                    dropoffMap.addListener("click", function (e) {
+                                        if (dropoffMarker) dropoffMarker.setMap(null); // Remove existing marker
+                                        var latLng = e.latLng;
+                                        dropoffMarker = new google.maps.Marker({
+                                            position: latLng,
+                                            map: dropoffMap,
+                                        });
+                                        document.getElementById("dropoff_location").value = "Lat: " + latLng.lat() + ", Lng: " + latLng.lng();
+                                    });
+                    
+                                }, function () {
+                                    alert("Geolocation service failed. Unable to retrieve location.");
+                                });
+                            } else {
+                                alert("Geolocation is not supported by your browser.");
+                            }
+                        }
+                    
+                        document.addEventListener("DOMContentLoaded", function () {
+                            document.querySelectorAll('input[name="booking_type"]').forEach((radio) => {
+                                radio.addEventListener("change", function () {
+                                    const bookingType = this.value;
+                                    const routeDisplay = document.getElementById("route_display");
+                                    const routeText = document.getElementById("route_text");
+                                    const googleMapsSection = document.getElementById("google_maps_section");
+                    
+                                    // Reset the route display and Google Maps section
+                                    routeText.classList.remove("show", "fade");
+                                    googleMapsSection.style.display = "none";
+                                    routeDisplay.style.display = "none"; // Hide route display
+                    
+                                    // Show content based on selected option
+                                    if (bookingType === "Home") {
+                                        routeDisplay.style.display = "block"; // Show the route display
+                                        routeText.textContent = "Going from Office to Home";
+                                        googleMapsSection.style.display = "none"; // Hide Google Maps section
+                                    } else if (bookingType === "Office") {
+                                        routeDisplay.style.display = "block"; // Show the route display
+                                        routeText.textContent = "Going from Home to Office";
+                                        googleMapsSection.style.display = "none"; // Hide Google Maps section
+                                    } else if (bookingType === "RAC") {
+                                        routeDisplay.style.display = "none"; // Hide route display
+                                        googleMapsSection.style.display = "block"; // Show Google Maps section for RAC
+                                    }
+                    
+                                    // Add animation class to fade in
+                                    routeText.classList.add("alert-info", "fade", "show");
+                                });
+                            });
+                        });
+                    </script> --}}
+
+
+                    <div class="container mt-5">
+                        <div class="card p-4 shadow-sm">
+                            <h3 class="mb-4">Towards</h3>
+                    
+                            <!-- Radio Buttons for Home, Office, and RAC -->
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="booking_type" id="home_radio" value="Home">
+                                <label class="form-check-label" for="home_radio">Home</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="booking_type" id="office_radio" value="Office">
+                                <label class="form-check-label" for="office_radio">Office</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="booking_type" id="rac_radio" value="RAC">
+                                <label class="form-check-label" for="rac_radio">RAC</label>
+                            </div>
+                    
+                            <!-- Route Display Section -->
+                            <div id="route_display" class="mt-3" style="display: none;">
+                                <div class="alert alert-info fade" id="route_text"></div>
+                            </div>
+                    
+                            <!-- Google Maps for Pickup and Drop-off for RAC -->
+                            <div id="google_maps_section" class="mt-3" style="display: none;">
+                                <div class="form-group">
+                                    <label for="pickup_location">Pickup Location</label>
+                                    <input type="text" id="pickup_location" class="form-control" placeholder="Pickup Location" readonly>
+                                    <label for="dropoff_location">Drop-off Location</label>
+                                    <input type="text" id="dropoff_location" class="form-control" placeholder="Drop-off Location" readonly>
+                                    <!-- Added Bootstrap grid class for responsive layout -->
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div id="pickup_map" style="height: 300px; margin-top: 10px;"></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div id="dropoff_map" style="height: 300px; margin-top: 10px;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <script src="https://maps.googleapis.com/maps/api/js?key={{ Hyvikk::api('api_key') }}&callback=initMap" async defer></script>
+                    <script>
+                        var pickupMap, dropoffMap;
+                        var pickupMarker, dropoffMarker;
+                    
+                        function initMap() {
+                            // Check if geolocation is available in the user's browser
+                            if (navigator.geolocation) {
+                                navigator.geolocation.getCurrentPosition(function (position) {
+                                    var userLat = position.coords.latitude;
+                                    var userLng = position.coords.longitude;
+                    
+                                    // Initialize the map for pickup and drop-off locations centered on the user's location
+                                    pickupMap = new google.maps.Map(document.getElementById("pickup_map"), {
+                                        center: { lat: userLat, lng: userLng },
+                                        zoom: 13,
+                                    });
+                                    dropoffMap = new google.maps.Map(document.getElementById("dropoff_map"), {
+                                        center: { lat: userLat, lng: userLng },
+                                        zoom: 13,
+                                    });
+                    
+                                    // Add markers to the pickup and drop-off maps for the user's location
+                                    pickupMarker = new google.maps.Marker({
+                                        position: { lat: userLat, lng: userLng },
+                                        map: pickupMap,
+                                        title: "Your Location",
+                                    });
+                    
+                                    dropoffMarker = new google.maps.Marker({
+                                        position: { lat: userLat, lng: userLng },
+                                        map: dropoffMap,
+                                        title: "Your Location",
+                                    });
+                    
+                                    // Handle click on the pickup map to update the text area
+                                    pickupMap.addListener("click", function (e) {
+                                        if (pickupMarker) pickupMarker.setMap(null); // Remove existing marker
+                                        var latLng = e.latLng;
+                                        pickupMarker = new google.maps.Marker({
+                                            position: latLng,
+                                            map: pickupMap,
+                                        });
+                                        document.getElementById("pickup_location").value = "Lat: " + latLng.lat() + ", Lng: " + latLng.lng();
+                                    });
+                    
+                                    // Handle click on the dropoff map to update the text area
+                                    dropoffMap.addListener("click", function (e) {
+                                        if (dropoffMarker) dropoffMarker.setMap(null); // Remove existing marker
+                                        var latLng = e.latLng;
+                                        dropoffMarker = new google.maps.Marker({
+                                            position: latLng,
+                                            map: dropoffMap,
+                                        });
+                                        document.getElementById("dropoff_location").value = "Lat: " + latLng.lat() + ", Lng: " + latLng.lng();
+                                    });
+                    
+                                }, function () {
+                                    alert("Geolocation service failed. Unable to retrieve location.");
+                                });
+                            } else {
+                                alert("Geolocation is not supported by your browser.");
+                            }
+                        }
+                    
+                        document.addEventListener("DOMContentLoaded", function () {
+                            document.querySelectorAll('input[name="booking_type"]').forEach((radio) => {
+                                radio.addEventListener("change", function () {
+                                    const bookingType = this.value;
+                                    const routeDisplay = document.getElementById("route_display");
+                                    const routeText = document.getElementById("route_text");
+                                    const googleMapsSection = document.getElementById("google_maps_section");
+                    
+                                    // Reset the route display and Google Maps section
+                                    routeText.classList.remove("show", "fade");
+                                    googleMapsSection.style.display = "none";
+                                    routeDisplay.style.display = "none"; // Hide route display
+                    
+                                    // Show content based on selected option
+                                    if (bookingType === "Home") {
+                                        routeDisplay.style.display = "block"; // Show the route display
+                                        routeText.textContent = "Going from Office to Home";
+                                        googleMapsSection.style.display = "none"; // Hide Google Maps section
+                                    } else if (bookingType === "Office") {
+                                        routeDisplay.style.display = "block"; // Show the route display
+                                        routeText.textContent = "Going from Home to Office";
+                                        googleMapsSection.style.display = "none"; // Hide Google Maps section
+                                    } else if (bookingType === "RAC") {
+                                        routeDisplay.style.display = "none"; // Hide route display
+                                        googleMapsSection.style.display = "block"; // Show Google Maps section for RAC
+                                    }
+                    
+                                    // Add animation class to fade in
+                                    routeText.classList.add("alert-info", "fade", "show");
+                                });
+                            });
+                        });
+                    </script>
+                    
+                    
+                    
+                    
+
+
                     @if (Auth::user()->user_type == 'C')
                         <div class="row">
                             <div class="col-md-6">
@@ -198,7 +489,9 @@
                             </div>
                         </div>
                     </div>
-                     <div class="row">
+
+                    {{-- This is old pickup and destination address div  --}}
+                     {{-- <div class="row">
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <div id="pickup_addresses_container"></div>
@@ -222,13 +515,13 @@
                             <div class="row">
                                 <div class="col-md-8">
                                     {!! Form::text('udf1', null, ['class' => 'form-control']) !!}
-                                </div>
+                                </div> --}}
                                 <div class="col-md-4">
                                     <button type="button" class="btn btn-info add_udf"> @lang('fleet.add')</button>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div> 
                     <div class="blank"></div>
                     <div class="col-md-12">
                         {!! Form::submit(__('fleet.save_booking'), ['class' => 'btn btn-success']) !!}

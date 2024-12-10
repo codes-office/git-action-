@@ -253,6 +253,26 @@ class BookingsController extends Controller
 		}
 	}
 
+	public function map()
+{
+    $rawData = \DB::table('users_meta')
+        ->whereIn('key', ['emsourcelat', 'emsourcelong']) // Filter for latitude and longitude keys
+        ->get();
+
+    // Group data by user_id and map latitude and longitude
+    $users = $rawData->groupBy('user_id')->map(function ($items) {
+        $data = $items->pluck('value', 'key');
+        return [
+            'id' => $items->first()->user_id, // Assuming a `user_id` column exists
+            'latitude' => $data['emsourcelat'] ?? null,
+            'longitude' => $data['emsourcelong'] ?? null,
+        ];
+    })->values(); // Reset keys to a numerical array
+
+    return view('bookings.map', compact('users'));
+}
+
+
 	// 	duplicate end here by dheeraj 
 
 	private function formatAddress($address)
@@ -781,6 +801,10 @@ class BookingsController extends Controller
 		$assignedAdminId = Auth::user()->id; // Get the ID of the currently authenticated admin
 		$userType = Auth::user()->user_type; // Get the user type
 
+		$addr = Bookings::select('customer_id', 'pickup_addr', 'dest_addr')->distinct()->get();
+
+    // Pass the employee addresses to the view
+
 		if ($userType == 'S' || $userType == 'M') {
 			// If the user is a Super Admin, fetch all customers
 			$data['customers'] = User::where('user_type', 'C')->get();
@@ -811,7 +835,7 @@ class BookingsController extends Controller
 		}
 
 		// Return the view with the data
-		return view("bookings.create", $data);
+		return view("bookings.create", $data, compact('addr'));
 	}
 
 
