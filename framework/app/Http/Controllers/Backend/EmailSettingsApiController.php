@@ -14,7 +14,7 @@ namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
 use App\Model\EmailContent;
-use App\Model\User;
+use App\Model\User; 
 use Hyvikk;
 use Illuminate\Http\Request;
 use Validator;

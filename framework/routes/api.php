@@ -83,7 +83,7 @@ Route::namespace ('Api')->middleware(['throttle', 'auth:api'])->group(function (
 	Route::post('update-fcm-token', 'UsersApi@update_fcm');
 
 	// live location api
-	Route::get('/locations', [LocationController::class, 'getVehicleDriverLocations']);
+	// Route::get('/locations', [LocationController::class, 'getVehicleDriverLocations']);
 
 });
 
