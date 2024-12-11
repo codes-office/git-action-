@@ -22,7 +22,7 @@ return [
     'cipher' => 'AES-256-CBC',
     'log' => 'daily',
     'log_level' => 'error',
-    'providers' => [
+    'providers' => [ 
         Barryvdh\DomPDF\ServiceProvider::class,
         Illuminate\Auth\AuthServiceProvider::class,
         Illuminate\Broadcasting\BroadcastServiceProvider::class,

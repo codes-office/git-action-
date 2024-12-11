@@ -9,15 +9,16 @@ Design and developed by Hyvikk Solutions <https://hyvikk.com/>
 
  */
 // save your email config here:
-return array(
-    "driver" => "smtp",
-    "host" => "smtp.hostinger.com",
-    "port" => 465, // YOUR_MAIL_PORT
-    "from" => array(
-        "address" => "ets@mltcorporate.com", // FROM_EMAIL_ADDRESS
-        "name" => "ETS", // FROM_USERNAME
-    ),
-    "username" => "ets@mltcorporate.com",
-    "password" => "ETS@mlt0",
-    "encryption" => "ssl", // E.G.: SSL/TLS/...
-);
+return [
+    'driver' => env('MAIL_MAILER', 'smtp'),
+    'host' => env('MAIL_HOST', 'smtp.hostinger.com'),
+    'port' => env('MAIL_PORT', 465),
+    'from' => [
+        'address' => env('MAIL_FROM_ADDRESS', 'info@mltcorporate.com'),
+        'name' => env('MAIL_FROM_NAME', 'ETS'),
+    ],
+    'username' => env('MAIL_USERNAME'),
+    'password' => env('MAIL_PASSWORD'),
+    'encryption' => env('MAIL_ENCRYPTION', 'ssl'),
+];
+

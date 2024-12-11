@@ -7,7 +7,7 @@ Dear {{$booking->driver->name}},
 
 @component('mail::table')
 @php($date_format_setting=(Hyvikk::get('date_format'))?Hyvikk::get('date_format'):'d-m-Y')
-
+/Log::info('Ride Booked.');
 <table>
 	<tr><td>Customer Name: </td><td>{{$booking->customer->name}}</td></tr>
 	<tr><td>Journey Date: </td><td>{{date($date_format_setting,strtotime($booking->pickup))}}</td></tr>

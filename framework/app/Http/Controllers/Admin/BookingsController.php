@@ -12,7 +12,8 @@ Design and developed by Hyvikk Solutions <https://hyvikk.com/>
 
 namespace App\Http\Controllers\Admin;
 use Illuminate\Support\Facades\Http;
-
+use App\Mail\DynamicMail;
+use Illuminate\Support\Facades\Mail;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\BookingRequest;
 use App\Mail\CustomerInvoice;
@@ -37,12 +38,12 @@ use DataTables;
 use DB;
 use Edujugon\PushNotification\PushNotification;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
 use App\Notifications\BookingStatusUpdated;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Log;
+use App\Mail\TestMail;
 
 // use App\Services\FirebaseService;
 class BookingsController extends Controller
@@ -51,7 +52,7 @@ class BookingsController extends Controller
 
 	public function updateBookingStatus(Request $request, $bookingId)
 	{
-		$booking = Booking::findOrFail($bookingId);
+		$booking = Bookings::findOrFail($bookingId);
 		$booking->status = 'confirmed';
 		$booking->save();
 
@@ -255,7 +256,7 @@ class BookingsController extends Controller
 
 	public function map()
 {
-    $rawData = \DB::table('users_meta')
+    $rawData = DB::table('users_meta')
         ->whereIn('key', ['emsourcelat', 'emsourcelong']) // Filter for latitude and longitude keys
         ->get();
 
@@ -957,8 +958,7 @@ class BookingsController extends Controller
 
 	public function store(BookingRequest $request)
 	{
-		//   var_dump($request->all());
-//       exit;
+		 Log::info($request->all());
 		// Validate booking
 		$xx = $this->check_booking($request->get("pickup"), $request->get("dropoff"), $request->get("vehicle_id"));
 		if ($xx) {
@@ -1242,7 +1242,11 @@ class BookingsController extends Controller
 
 			// Call the booking_notification method to send notification
 			$this->booking_notification($booking->id);
+			\Log::info('this is from update function');
 
+			// Call the sendBookingNotificationEmail method to send email
+			$this->sendBookingNotificationEmail($booking->id);
+			
 			return redirect()->route('bookings.index');
 		} catch (\Exception $e) {
 			\Log::error('Error updating booking: ' . $e->getMessage());
@@ -1252,6 +1256,83 @@ class BookingsController extends Controller
 				->withInput();
 		}
 	}
+	
+	public function sendCustomMail(Request $request)
+	{
+		$email = $request->input('email'); // Receiver email
+		$title = $request->input('title', 'Default Title'); // Email title
+		$subject = $request->input('subject', 'Default Subject'); // Email subject
+		$body = $request->input('body', 'This is the default body content'); // Email body
+		$footer = $request->input('footer', 'This is the default footer'); // Email footer
+	
+		try {
+			Mail::to($email)->send(new DynamicMail($title, $subject, $body, $footer));
+			return response()->json(['message' => 'Email sent successfully'], 200);
+		} catch (\Exception $e) {
+			return response()->json(['error' => 'Email sending failed: ' . $e->getMessage()], 500);
+		}
+	}
+	
+	public function testMail(Request $request)
+{
+	$testMail = 'dheerajdp777@gmail.com';
+	$testMessage = "test message";
+	$subject = "test subject";
+
+	Mail::to($testMail)->send(new TestMail($testMessage , $subject));
+}
+
+public function sendBookingNotificationEmail($id)
+{
+    \Log::info('Email notification function called');
+
+    // Find the booking record
+    $booking = Bookings::find($id);
+
+    if (!$booking) {
+        \Log::error("Booking not found for ID: $id");
+        return;
+    }
+
+    // Find the driver
+    $driver = User::find($booking->driver_id);
+    if ($driver && !empty($driver->email)) {
+        try {
+            $subject = "New Ride Assigned";
+            $message = "You have been assigned a new ride. Please check your dashboard for details.";
+
+            Mail::to($driver->email)->send(new TestMail($message, $subject));
+            \Log::info("Email sent to driver ID: {$driver->id} ({$driver->email})");
+        } catch (\Exception $e) {
+            \Log::error("Error sending email to driver ID: {$driver->id}. Message: " . $e->getMessage());
+        }
+    } else {
+        \Log::error("Driver or driver email not found for booking ID: $id");
+    }
+
+    // Handle customer email notification
+    $customerIds = json_decode($booking->customer_id, true);
+    if (is_array($customerIds) && count($customerIds) > 0) {
+        $customer = User::find($customerIds[0]);
+
+        if ($customer && !empty($customer->email)) {
+            try {
+                $subject = "Your Ride Details";
+                $message = "Your ride has been confirmed. Please contact your driver for more information.";
+
+                Mail::to($customer->email)->send(new TestMail($message, $subject));
+                \Log::info("Email sent to customer ID: {$customer->id} ({$customer->email})");
+            } catch (\Exception $e) {
+                \Log::error("Error sending email to customer ID: {$customer->id}. Message: " . $e->getMessage());
+            }
+        } else {
+            \Log::warning("Customer or customer email not found for booking ID: $id");
+        }
+    } else {
+        \Log::warning("No valid customer IDs found for booking ID: $id");
+    }
+}
+
 
 
 	public function prev_address(Request $request)
@@ -1463,7 +1544,7 @@ class BookingsController extends Controller
 //         Log::info('Income record deleted');
 //     }
 
-	//     // // Send emails
+	//     // // Send emails  
 //     // if (Hyvikk::email_msg('email') == 1) {
 //     //     Mail::to($booking->customer->email)->send(new BookingCancelled($booking, $booking->customer->name));
 //     //     Mail::to($booking->driver->email)->send(new BookingCancelled($booking, $booking->driver->name));

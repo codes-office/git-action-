@@ -12,6 +12,8 @@
 // routes/web.php
 
 Route::get('/send-fcm-notification', 'FirebaseController@sendNotification')->name('send.notification');
+Route::get('/testmail', 'Admin\BookingsController@testmail');
+
 
 // Route::get('/send-fcm-notification', 'FirebaseController@sendNotification');
 
