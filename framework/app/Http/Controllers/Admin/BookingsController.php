@@ -45,6 +45,7 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Log;
 use App\Mail\TestMail;
 
+
 // use App\Services\FirebaseService;
 class BookingsController extends Controller
 {
@@ -1026,7 +1027,7 @@ class BookingsController extends Controller
 			// $this->push_notification($booking->id);
 
 			// if (Hyvikk::email_msg('email') == 1) {
-			//     Mail::to($booking->customer->email)->send(new VehicleBooked($booking));
+			    Mail::to($booking->customer->email)->send(new VehicleBooked($booking));
 			//     Mail::to($booking->driver->email)->send(new DriverBooked($booking));
 			// }
 
@@ -1245,7 +1246,7 @@ class BookingsController extends Controller
 			\Log::info('this is from update function');
 
 			// Call the sendBookingNotificationEmail method to send email
-			$this->sendBookingNotificationEmail($booking->id);
+			$this->sendBookingNotificationEmail($booking , $booking->id);
 			
 			return redirect()->route('bookings.index');
 		} catch (\Exception $e) {
@@ -1281,9 +1282,7 @@ class BookingsController extends Controller
 
 	Mail::to($testMail)->send(new TestMail($testMessage , $subject));
 }
-
-public function sendBookingNotificationEmail($id)
-{
+public function sendBookingNotificationEmail($booking, $id) {
     \Log::info('Email notification function called');
 
     // Find the booking record
@@ -1317,10 +1316,19 @@ public function sendBookingNotificationEmail($id)
 
         if ($customer && !empty($customer->email)) {
             try {
-                $subject = "Your Ride Details";
-                $message = "Your ride has been confirmed. Please contact your driver for more information.";
+                // Store all required data in one array
+                $data = [
+                    'customer' => $customer,
+                    'vehicle' => $booking->vehicle,
+                    'pickupDate' => $booking->pickup,
+                    'pickupAddr' => $booking->pickup_addr,
+                    'destAddr' => $booking->dest_addr,
+                    'travellers' => $booking->travellers,
+                ];
 
-                Mail::to($customer->email)->send(new TestMail($message, $subject));
+                // Send the email with the data array
+                Mail::to($customer->email)->send(new VehicleBooked($data));
+
                 \Log::info("Email sent to customer ID: {$customer->id} ({$customer->email})");
             } catch (\Exception $e) {
                 \Log::error("Error sending email to customer ID: {$customer->id}. Message: " . $e->getMessage());

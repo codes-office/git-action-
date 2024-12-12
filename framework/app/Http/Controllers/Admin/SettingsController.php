@@ -69,6 +69,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Kreait\Firebase\Factory;
 use Kreait\Laravel\Firebase\Facades\Firebase;
+use Log;
 use Redirect;
 use Storage;
 use Illuminate\Support\Facades\Artisan;
@@ -481,39 +482,83 @@ class SettingsController extends Controller {
 		return view('utilities.set_email');
 	}
 
-	public function set_content(Request $request, $type) {
+	// public function set_content(Request $request, $type) {
+	// 	Log::info($request->all());
+		
+	// 	if ($type == "insurance") {
+	// 		$validator = $request->validate([
+	// 			'insurance' => 'required',
+	// 		]);
+	// 		EmailContent::where('key', 'insurance')->update(['value' => $request->get('insurance')]);
 
-		if ($type == "insurance") {
-			$validator = $request->validate([
-				'insurance' => 'required',
-			]);
-			EmailContent::where('key', 'insurance')->update(['value' => $request->get('insurance')]);
+	// 	} elseif ($type == "vehicle-licence") {
+	// 		$request->validate([
+	// 			'vehicle_licence' => 'required',
+	// 		]);
+	// 		EmailContent::where('key', 'vehicle_licence')->update(['value' => $request->get('vehicle_licence')]);
+	// 	} elseif ($type == "driver-licence") {
+	// 		$request->validate([
+	// 			'driving_licence' => 'required',
+	// 		]);
+	// 		EmailContent::where('key', 'driving_licence')->update(['value' => $request->get('driving_licence')]);
+	// 	} elseif ($type == "registration") {
+	// 		$request->validate([
+	// 			'registration' => 'required',
+	// 		]);
+	// 		EmailContent::where('key', 'registration')->update(['value' => $request->get('registration')]);
+	// 	} elseif ($type == "reminder") {
+	// 		$request->validate([
+	// 			'service_reminder' => 'required',
+	// 		]);
+	// 		EmailContent::where('key', 'service_reminder')->update(['value' => $request->get('service_reminder')]);
+	// 	} elseif ($type == "test_mail") {
+	// 		Log::info($request->all());
+	// 		$request->validate([
+	// 			'test_mail' => 'required',
+	// 		]);
+	// 		EmailContent::where('key', 'test_mail')->update(['value' => $request->get('test_mail')]);
+	// 	}
 
-		} elseif ($type == "vehicle-licence") {
-			$request->validate([
-				'vehicle_licence' => 'required',
-			]);
-			EmailContent::where('key', 'vehicle_licence')->update(['value' => $request->get('vehicle_licence')]);
-		} elseif ($type == "driver-licence") {
-			$request->validate([
-				'driving_licence' => 'required',
-			]);
-			EmailContent::where('key', 'driving_licence')->update(['value' => $request->get('driving_licence')]);
-		} elseif ($type == "registration") {
-			$request->validate([
-				'registration' => 'required',
-			]);
-			EmailContent::where('key', 'registration')->update(['value' => $request->get('registration')]);
-		} elseif ($type == "reminder") {
-			$request->validate([
-				'service_reminder' => 'required',
-			]);
-			EmailContent::where('key', 'service_reminder')->update(['value' => $request->get('service_reminder')]);
-		}
+	// 	// return redirect()->back();
+	// 	return redirect('admin/set-email?tab=' . $type);
+	// }
 
-		// return redirect()->back();
-		return redirect('admin/set-email?tab=' . $type);
-	}
+
+	public function set_content(Request $request, $type)
+{
+    Log::info($request->all());
+
+    $contentKeyMap = [
+        "insurance" => "insurance",
+        "vehicle-licence" => "vehicle_licence",
+        "driver-licence" => "driving_licence",
+        "registration" => "registration",
+        "reminder" => "service_reminder",
+        "testmail" => "test_mail",
+		"bookingconfirm"=>"booking_mail"
+    ];
+
+    if (array_key_exists($type, $contentKeyMap)) {
+        $key = $contentKeyMap[$type];
+        $request->validate([$key => 'required']);
+
+        $record = EmailContent::where('key', $key)->first();
+        if ($record) {
+            $record->value = $request->get($key);
+            $record->save();
+            Log::info("Content for '$key' updated successfully.");
+        } else {
+            Log::error("No record found with key '$key'.");
+        }
+    } else {
+        Log::error("Invalid type '$type' provided.");
+    }
+Log::info($type);
+
+    return redirect('admin/set-email?tab=' . $type)->with('success', 'Content updated successfully.');
+}
+
+
 
 	public function firebase(Request $request) {
 		Artisan::call('config:clear');

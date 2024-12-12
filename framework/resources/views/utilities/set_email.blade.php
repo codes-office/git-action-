@@ -36,6 +36,8 @@
             <li class="nav-item"><a href="#driver-licence" data-toggle="tab" class="nav-link"> @lang('fleet.d_lic') <i class="fa"></i></a></li>
             <li class="nav-item"><a href="#registration" data-toggle="tab" class="nav-link"> @lang('fleet.v_reg') <i class="fa"></i></a></li>
             <li class="nav-item"><a href="#reminder" data-toggle="tab" class="nav-link"> @lang('fleet.serviceReminders') <i class="fa"></i></a></li>
+            <li class="nav-item"><a href="#testmail" data-toggle="tab" class="nav-link">TestMail<i class="fa"></i></a></li>
+            <li class="nav-item"><a href="#bookingconfirm" data-toggle="tab" class="nav-link">Booking Confirm<i class="fa"></i></a></li>
           </ul>
         </div>
 
@@ -124,6 +126,42 @@
                 </div>
                 {!! Form::close()!!}
               </div>
+
+
+              <div class="tab-pane" id="testmail">
+    {!! Form::open(['url' => 'admin/set-content/testmail', 'method' => 'post']) !!}
+    <div class="form-group">
+        {!! Form::label('testmail', __('fleet.test_mail_content'), ['class' => 'form-label']) !!}
+        <textarea name="test_mail" id="testMail">{{ Hyvikk::email_msg('test_mail') }}</textarea>
+
+    </div>
+
+    <div class="col-md-2">
+        <div class="form-group">
+            <input type="submit" class="form-control btn btn-success" value="@lang('fleet.set')" />
+        </div>
+    </div>
+    {!! Form::close() !!}
+</div>
+
+
+
+   <div class="tab-pane" id="bookingconfirm">
+    {!! Form::open(['url' => 'admin/set-content/bookingconfirm', 'method' => 'post']) !!}
+    <div class="form-group">
+        {!! Form::label('bookingconfirm', __('Booking Confirm'), ['class' => 'form-label']) !!}
+        <textarea name="booking_mail" id="booking_confirm">{{ Hyvikk::email_msg('booking_mail') }}</textarea>
+
+    </div>
+
+    <div class="col-md-2">
+        <div class="form-group">
+            <input type="submit" class="form-control btn btn-success" value="@lang('fleet.set')" />
+        </div>
+    </div>
+    {!! Form::close() !!}
+</div>
+
             </div>
           </div>
         </div>
@@ -141,6 +179,9 @@
     ClassicEditor.create( document.querySelector( '#dl' ) );
     ClassicEditor.create( document.querySelector( '#reg' ) );
     ClassicEditor.create( document.querySelector( '#sr' ) );
+    ClassicEditor.create(document.querySelector('#testMail'));
+    ClassicEditor.create(document.querySelector('#booking_confirm'));
+
 </script>
 <script type="text/javascript">
 $(document).ready(function() {

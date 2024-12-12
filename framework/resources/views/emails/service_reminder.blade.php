@@ -9,7 +9,7 @@ Dear {{$user}},
 	Vehicle: {{$vehicle}}
 	Service Item: {{$detail}}
 	Next due date: {{date($date_format_setting,strtotime($date))}}
-	Remaining days: {{$diff_in_days}}
+	Remaining days: {{$diff_in_days}}  
 
 
 
