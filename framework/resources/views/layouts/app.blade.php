@@ -948,8 +948,8 @@ input:checked + .slider:before {
 
               @endif
               @canany(['Bookings list','Bookings add','BookingQuotations list'])
-              <li class="nav-item has-treeview {{$class}}">
-                <a href="#" class="nav-link {{$active}}">
+              <li class="nav-item has-treeview {{ Request::is('admin/bookings*') || Request::is('admin/map*') ? 'menu-open' : '' }}">
+                <a href="#" class="nav-link {{ Request::is('admin/bookings*') || Request::is('admin/map*') ? 'active' : '' }}">
                   <i class="nav-icon fa fa-address-card"></i>
                   <p>
                     @lang('menu.bookings')
@@ -959,30 +959,28 @@ input:checked + .slider:before {
                 <ul class="nav nav-treeview">
                   @can('Bookings add')
                   <li class="nav-item">
-                    <a href="{{ route('bookings.create')}}"
-                      class="nav-link @if(Request::is('admin/bookings/create')) active @endif">
-                      <i class="fa fa-address-book nav-icon "></i>
-                      <p>
-                        @lang('menu.newbooking')</p>
+                    <a href="{{ route('bookings.create') }}"
+                      class="nav-link {{ Request::is('admin/bookings/create') ? 'active' : '' }}">
+                      <i class="fa fa-address-book nav-icon"></i>
+                      <p>@lang('menu.newbooking')</p>
                     </a>
                   </li>
                   @endcan
                   @can('Bookings list')
                   <li class="nav-item">
-                    <a href="{{ route('bookings.index')}}"
-                      class="nav-link @if((Request::is('admin/bookings*')) && !(Request::is('admin/bookings/create')) && !(Request::is('admin/bookings_calendar'))) active @endif">
+                    <a href="{{ route('bookings.index') }}"
+                      class="nav-link {{ Request::is('admin/bookings') || Request::is('admin/bookings/index') ? 'active' : '' }}">
                       <i class="fa fa-tasks nav-icon"></i>
-                      <p>
-                        @lang('menu.manage_bookings')</p>
+                      <p>@lang('menu.manage_bookings')</p>
                     </a>
                   </li>
                   <li class="nav-item">
-              <a href="{{ route('map.index') }}" 
-                  class="nav-link @if(Request::is('admin/map*')) active @endif">
-                    <i class="fa fa-map nav-icon"></i>
-                    <p>Map</p>
+                    <a href="{{ route('map.index') }}"
+                      class="nav-link {{ Request::is('admin/map*') ? 'active' : '' }}">
+                      <i class="fa fa-map nav-icon"></i>
+                      <p>Map</p>
                     </a>
-                    </li>
+                  </li>
 
                   <!--<li class="nav-item">-->
                   <!--  <a href="{{ url('admin/transactions') }}"-->
