@@ -25,18 +25,18 @@ class BookingRequest extends FormRequest {
 		}
 	}
 
-	public function rules() {
-		return [
+// 	public function rules() {
+// 		return [
 
-			'customer_id' => 'required',
-			'pickup' => 'required',
-			'dropoff' => 'required|different:pickup',
-// 			'vehicle_id' => 'required',
-			'pickup_addr' => 'required',
-			'dest_addr' => 'required|different:pickup_addr',
+// 			'customer_id' => 'required',
+// 			'pickup' => 'required',
+// 			'dropoff' => 'required|different:pickup',
+// // 			'vehicle_id' => 'required',
+// 			// 'pickup_addr' => 'required',
+// 			// 'dest_addr' => 'required|different:pickup_addr',
 
-		];
-	}
+// 		];
+// 	}
 
 	public function messages() {
 		return [
