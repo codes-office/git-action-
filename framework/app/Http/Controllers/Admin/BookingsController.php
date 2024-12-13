@@ -44,6 +44,7 @@ use App\Notifications\BookingStatusUpdated;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Log;
 use App\Mail\TestMail;
+use Illuminate\Support\Facades\Validator;
 
 
 // use App\Services\FirebaseService;
@@ -959,123 +960,116 @@ class BookingsController extends Controller
 
 	
 	public function store(BookingRequest $request)
-	{
-		// \Log::info('ENTER TO BACKEND');
-		// var_dump($request->all());
-		// exit;
-	
-		// Validation for user IDs and booking type
-		$validation = Validator::make($request->all(), [
-			'customer_id' => 'required|array',
-			'customer_id.*' => 'required|exists:users,id',
-			'booking_type' => 'required|in:Home,Office,RAC',
-		]);
-	
-		if ($validation->fails()) {
-			return response()->json([
-				'success' => 0,
-				'message' => 'Validation Error',
-				'errors' => $validation->errors()
-			], 422);
-		}
-	
-		// Decode customer_id array
-		$userIds = $request->get('customer_id'); // This will be an array of user IDs
-		$bookingType = $request->get('booking_type');
-		$bookings = [];
-	
-		foreach ($userIds as $userId) {
-			// Fetch the user and addresses
-			$user = User::find($userId);
-			if (!$user) {
-				return response()->json([
-					'success' => 0,
-					'message' => "User with ID $userId not found."
-				], 404);
-			}
-	
-			$homeAddress = $user->address; // User's home address
-			$homelongitude = $user->getMeta('emsourcelat'); // User's home longitude
-			$homelatitude = $user->getMeta('emsourcelong'); // User's home latitude
-	
-			$officeAddress = $user->assigned_admin
-				? User::find($user->assigned_admin)->address ?? 'No Admin Assigned'
-				: 'Company Not Assigned';
-			$officelongitude = $user->assigned_admin
-				? User::find($user->assigned_admin)->getMeta('emsourcelat') ?? 'No Admin Assigned'
-				: 'Company Not Assigned';
-			$officelatitude = $user->assigned_admin
-				? User::find($user->assigned_admin)->getMeta('emsourcelong') ?? 'No Admin Assigned'
-				: 'Company Not Assigned';
-	
-			// Set pickup and destination based on booking_type
-			if ($bookingType === 'Home') {
-				$pickupAddress = $officeAddress;
-				$pickuplatitude = $officelatitude;
-				$pickuplongitude = $officelongitude;
-				$destAddress = $homeAddress;
-				$destlatitude = $homelatitude;
-				$destlongitude = $homelongitude;
-			} elseif ($bookingType === 'Office') {
-				$pickupAddress = $homeAddress;
-				$pickuplatitude = $homelatitude;
-				$pickuplongitude = $homelongitude;
-				$destAddress = $officeAddress;
-				$destlatitude = $officelatitude;
-				$destlongitude = $officelongitude;
-			} else {
-				$pickupAddress = $request->get('pickup_location');
-				$pickuplatitude = $request->get('pickup_lat');
-				$pickuplongitude = $request->get('pickup_lng');
-				$destAddress = $request->get('dropoff_location');
-				$destlatitude = $request->get('dropoff_lat');
-				$destlongitude = $request->get('dropoff_lng');
-			}
-	
-			// Create booking record for each user
-			$booking = Bookings::create([
-				'customer_id' => json_encode([(string)$user->id]), // Store user_id as a JSON array of strings
-				'pickup_addr' => $pickupAddress,
-				'pickup_lat' => $pickuplatitude,
-				'pickup_long' => $pickuplongitude,
-				'dest_addr' => $destAddress,
-				'dest_lat' => $destlatitude,
-				'dest_long' => $destlongitude,
-				'pickup' => now(), // Stores current date and time
-				'accept_status' => 0,
-				'ride_status' => null,
-				'booking_type' => $bookingType,
-			]);
-	
-			// Log booking details
-			Log::info('New Booking Created', [
-				'user_id' => $user->id,
-				'user_name' => $user->name,
-				'booking_id' => $booking->id,
-				'pickup_address' => $pickupAddress,
-				'pickup_lat' => $pickuplatitude,
-				'pickup_long' => $pickuplongitude,
-				'destination_address' => $destAddress,
-				'destination_lat' => $destlatitude,
-				'destination_long' => $destlongitude,
-				'pickup_time' => now(),
-				'booking_type' => $bookingType,
-			]);
-	
-			$bookings[] = ['booking_id' => $booking->id];
-		}
-	
-		// Send notification for each booking (optional)
-		foreach ($bookings as $booking) {
-			$this->push_notification($booking['booking_id'], $request->vehicle_typeid);
-		}
-	
-		return response()->json([
-			'success' => 1,
-			'message' => "Your Requests have been Submitted Successfully.",
-			'data' => $bookings
-		], 201);
-	}
+{
+    // Validation for user IDs and booking type
+    $validation = Validator::make($request->all(), [
+        'customer_id' => 'required|array',
+        'customer_id.*' => 'required|exists:users,id',
+        'booking_type' => 'required|in:Home,Office,RAC',
+    ]);
+
+    if ($validation->fails()) {
+        return response()->json([
+            'success' => 0,
+            'message' => 'Validation Error',
+            'errors' => $validation->errors()
+        ], 422);
+    }
+
+    // Decode customer_id array
+    $userIds = $request->get('customer_id'); // This will be an array of user IDs
+    $bookingType = $request->get('booking_type');
+    $bookings = [];
+
+    foreach ($userIds as $userId) {
+        // Fetch the user and addresses
+        $user = User::find($userId);
+        if (!$user) {
+            return response()->json([
+                'success' => 0,
+                'message' => "User with ID $userId not found."
+            ], 404);
+        }
+
+        $homeAddress = $user->address; // User's home address
+        $homelongitude = $user->getMeta('emsourcelat'); // User's home longitude
+        $homelatitude = $user->getMeta('emsourcelong'); // User's home latitude
+
+        $officeAddress = $user->assigned_admin
+            ? User::find($user->assigned_admin)->address ?? 'No Admin Assigned'
+            : 'Company Not Assigned';
+        $officelongitude = $user->assigned_admin
+            ? User::find($user->assigned_admin)->getMeta('emsourcelat') ?? 'No Admin Assigned'
+            : 'Company Not Assigned';
+        $officelatitude = $user->assigned_admin
+            ? User::find($user->assigned_admin)->getMeta('emsourcelong') ?? 'No Admin Assigned'
+            : 'Company Not Assigned';
+
+        // Set pickup and destination based on booking_type
+        if ($bookingType === 'Home') {
+            $pickupAddress = $officeAddress;
+            $pickuplatitude = $officelatitude;
+            $pickuplongitude = $officelongitude;
+            $destAddress = $homeAddress;
+            $destlatitude = $homelatitude;
+            $destlongitude = $homelongitude;
+        } elseif ($bookingType === 'Office') {
+            $pickupAddress = $homeAddress;
+            $pickuplatitude = $homelatitude;
+            $pickuplongitude = $homelongitude;
+            $destAddress = $officeAddress;
+            $destlatitude = $officelatitude;
+            $destlongitude = $officelongitude;
+        } else {
+            $pickupAddress = $request->get('pickup_location');
+            $pickuplatitude = $request->get('pickup_lat');
+            $pickuplongitude = $request->get('pickup_lng');
+            $destAddress = $request->get('dropoff_location');
+            $destlatitude = $request->get('dropoff_lat');
+            $destlongitude = $request->get('dropoff_lng');
+        }
+
+        // Create booking record for each user
+        $booking = Bookings::create([
+            'customer_id' => json_encode([(string)$user->id]), // Store user_id as a JSON array of strings
+            'pickup_addr' => $pickupAddress,
+            'pickup_lat' => $pickuplatitude,
+            'pickup_long' => $pickuplongitude,
+            'dest_addr' => $destAddress,
+            'dest_lat' => $destlatitude,
+            'dest_long' => $destlongitude,
+            'pickup' => now(), // Stores current date and time
+            'accept_status' => 0,
+            'ride_status' => null,
+            'booking_type' => $bookingType,
+        ]);
+
+        // Log booking details
+        Log::info('New Booking Created', [
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'booking_id' => $booking->id,
+            'pickup_address' => $pickupAddress,
+            'pickup_lat' => $pickuplatitude,
+            'pickup_long' => $pickuplongitude,
+            'destination_address' => $destAddress,
+            'destination_lat' => $destlatitude,
+            'destination_long' => $destlongitude,
+            'pickup_time' => now(),
+            'booking_type' => $bookingType,
+        ]);
+
+        $bookings[] = ['booking_id' => $booking->id];
+    }
+
+    // Send notification for each booking (optional)
+    foreach ($bookings as $booking) {
+        $this->push_notification($booking['booking_id'], $request->vehicle_typeid);
+    }
+
+    return redirect()->route("bookings.index");
+}
+
 	
 
 
