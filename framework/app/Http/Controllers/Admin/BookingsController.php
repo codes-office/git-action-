@@ -44,6 +44,7 @@ use App\Notifications\BookingStatusUpdated;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Log;
 use App\Mail\TestMail;
+use Illuminate\Support\Facades\Validator;
 
 
 // use App\Services\FirebaseService;
@@ -957,85 +958,119 @@ class BookingsController extends Controller
 
 	}
 
+	
 	public function store(BookingRequest $request)
-	{
-		 Log::info($request->all());
-		// Validate booking
-		$xx = $this->check_booking($request->get("pickup"), $request->get("dropoff"), $request->get("vehicle_id"));
-		if ($xx) {
-			// Prepare booking data
-			$bookingData = $request->except(['pickup_addr', 'dest_addr', 'note', 'udf']); // Exclude arrays from booking creation
-			$customerIds = $request->input('customer_id', []);
-			$bookingData['customer_id'] = json_encode($customerIds);
-			// Serialize array fields
-			// $bookingData['pickup_addr'] = serialize($request->get('pickup_addr'));
-			// $bookingData['dest_addr'] = serialize($request->get('dest_addr'));
-			// $bookingData['note'] = serialize($request->get('note'));
-			$travellers = intval($request->get('travellers', 1));
-			if ($travellers > 1) {
-				// Create objects for multiple travelers
-				$pickupAddrs = [];
-				$destAddrs = [];
-				$notes = [];
+{
+    // Validation for user IDs and booking type
+    $validation = Validator::make($request->all(), [
+        'customer_id' => 'required|array',
+        'customer_id.*' => 'required|exists:users,id',
+        'booking_type' => 'required|in:Home,Office,RAC',
+    ]);
 
-				for ($i = 0; $i < $travellers; $i++) {
-					$pickupAddrs["pickup_add" . ($i + 1)] = $request->get('pickup_addr')[$i] ?? '';
-					$destAddrs["dest_addr" . ($i + 1)] = $request->get('dest_addr')[$i] ?? '';
-					$notes["note" . ($i + 1)] = $request->get('note')[$i] ?? '';
-				}
+    if ($validation->fails()) {
+        return response()->json([
+            'success' => 0,
+            'message' => 'Validation Error',
+            'errors' => $validation->errors()
+        ], 422);
+    }
 
-				$bookingData['pickup_addr'] = json_encode($pickupAddrs);
-				$bookingData['dest_addr'] = json_encode($destAddrs);
-				$bookingData['note'] = json_encode($notes);
-			} else {
-				// For single traveler, keep the original array structure
-				$bookingData['pickup_addr'] = json_encode($request->get('pickup_addr'));
-				$bookingData['dest_addr'] = json_encode($request->get('dest_addr'));
-				$bookingData['note'] = json_encode($request->get('note'));
-			}
+    // Decode customer_id array
+    $userIds = $request->get('customer_id'); // This will be an array of user IDs
+    $bookingType = $request->get('booking_type');
+    $bookings = [];
 
-			$bookingData['udf'] = serialize($request->get('udf'));
-			// var_dump($bookingData);
-			// exit;
-			// Create the booking record
-			$booking = Bookings::create($bookingData);
-			$id = $booking->id;
+    foreach ($userIds as $userId) {
+        // Fetch the user and addresses
+        $user = User::find($userId);
+        if (!$user) {
+            return response()->json([
+                'success' => 0,
+                'message' => "User with ID $userId not found."
+            ], 404);
+        }
 
-			// Update additional booking details
-			$booking->user_id = $request->get("user_id");
-			$booking->driver_id = $request->get('driver_id');
-			$dropoff = Carbon::parse($booking->dropoff);
-			$pickup = Carbon::parse($booking->pickup);
-			$diff = $pickup->diffInMinutes($dropoff);
-			$booking->duration = $diff;
-			$booking->accept_status = 1; //0=yet to accept, 1=accept
-			$booking->ride_status = "Upcoming";
-			$booking->booking_type = 1;
-			$booking->journey_date = date('d-m-Y', strtotime($booking->pickup));
-			$booking->journey_time = date('H:i:s', strtotime($booking->pickup));
-			$booking->save();
+        $homeAddress = $user->address; // User's home address
+        $homelongitude = $user->getMeta('emsourcelat'); // User's home longitude
+        $homelatitude = $user->getMeta('emsourcelong'); // User's home latitude
 
+        $officeAddress = $user->assigned_admin
+            ? User::find($user->assigned_admin)->address ?? 'No Admin Assigned'
+            : 'Company Not Assigned';
+        $officelongitude = $user->assigned_admin
+            ? User::find($user->assigned_admin)->getMeta('emsourcelat') ?? 'No Admin Assigned'
+            : 'Company Not Assigned';
+        $officelatitude = $user->assigned_admin
+            ? User::find($user->assigned_admin)->getMeta('emsourcelong') ?? 'No Admin Assigned'
+            : 'Company Not Assigned';
 
-			\Log::info('Test Log: test1');
+        // Set pickup and destination based on booking_type
+        if ($bookingType === 'Home') {
+            $pickupAddress = $officeAddress;
+            $pickuplatitude = $officelatitude;
+            $pickuplongitude = $officelongitude;
+            $destAddress = $homeAddress;
+            $destlatitude = $homelatitude;
+            $destlongitude = $homelongitude;
+        } elseif ($bookingType === 'Office') {
+            $pickupAddress = $homeAddress;
+            $pickuplatitude = $homelatitude;
+            $pickuplongitude = $homelongitude;
+            $destAddress = $officeAddress;
+            $destlatitude = $officelatitude;
+            $destlongitude = $officelongitude;
+        } else {
+            $pickupAddress = $request->get('pickup_location');
+            $pickuplatitude = $request->get('pickup_lat');
+            $pickuplongitude = $request->get('pickup_lng');
+            $destAddress = $request->get('dropoff_location');
+            $destlatitude = $request->get('dropoff_lat');
+            $destlongitude = $request->get('dropoff_lng');
+        }
 
-			$this->booking_notification($id); // Sending the notification with booking ID
-			\Log::info('Test Log: test2');
+        // Create booking record for each user
+        $booking = Bookings::create([
+            'customer_id' => json_encode([(string)$user->id]), // Store user_id as a JSON array of strings
+            'pickup_addr' => $pickupAddress,
+            'pickup_lat' => $pickuplatitude,
+            'pickup_long' => $pickuplongitude,
+            'dest_addr' => $destAddress,
+            'dest_lat' => $destlatitude,
+            'dest_long' => $destlongitude,
+            'pickup' => now(), // Stores current date and time
+            'accept_status' => 0,
+            'ride_status' => null,
+            'booking_type' => $bookingType,
+        ]);
 
-			// Send notifications
-			// $this->booking_notification($booking->id);
-			// $this->sms_notification($booking->id);
-			// $this->push_notification($booking->id);
+        // Log booking details
+        Log::info('New Booking Created', [
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'booking_id' => $booking->id,
+            'pickup_address' => $pickupAddress,
+            'pickup_lat' => $pickuplatitude,
+            'pickup_long' => $pickuplongitude,
+            'destination_address' => $destAddress,
+            'destination_lat' => $destlatitude,
+            'destination_long' => $destlongitude,
+            'pickup_time' => now(),
+            'booking_type' => $bookingType,
+        ]);
 
-			// if (Hyvikk::email_msg('email') == 1) {
-			    Mail::to($booking->customer->email)->send(new VehicleBooked($booking));
-			//     Mail::to($booking->driver->email)->send(new DriverBooked($booking));
-			// }
+        $bookings[] = ['booking_id' => $booking->id];
+    }
 
-			return redirect()->route("bookings.index");
-		} else {
-			return redirect()->route("bookings.create")->withErrors(["error" => "Selected Vehicle is not Available in Given Timeframe"])->withInput();
-		}
-	}
+    // Send notification for each booking (optional)
+    foreach ($bookings as $booking) {
+        $this->push_notification($booking['booking_id'], $request->vehicle_typeid);
+    }
+
+    return redirect()->route("bookings.index");
+}
+
+	
 
 
 	public function sms_notification($booking_id)
@@ -1244,8 +1279,8 @@ class BookingsController extends Controller
 			// Call the booking_notification method to send notification
 			$this->booking_notification($booking->id);
 			\Log::info('this is from update function');
-
-			// Call the sendBookingNotificationEmail method to send email
+			// Mail::to($booking->driver->email)->send(new DriverBooked($booking));
+			// // Call the sendBookingNotificationEmail method to send email
 			$this->sendBookingNotificationEmail($booking , $booking->id);
 			
 			return redirect()->route('bookings.index');
@@ -1282,6 +1317,7 @@ class BookingsController extends Controller
 
 	Mail::to($testMail)->send(new TestMail($testMessage , $subject));
 }
+
 public function sendBookingNotificationEmail($booking, $id) {
     \Log::info('Email notification function called');
 
@@ -1293,14 +1329,40 @@ public function sendBookingNotificationEmail($booking, $id) {
         return;
     }
 
-    // Find the driver
+    // Decode customer IDs
+    $customerIds = json_decode($booking->customer_id, true);
+
+    // Ensure customer IDs is an array
+    if (!is_array($customerIds) || count($customerIds) === 0) {
+        \Log::warning("No valid customer IDs found for booking ID: $id");
+        return;
+    }
+
+    // Retrieve the first customer
+    $customer = User::find($customerIds[0]);
+    if (!$customer) {
+        \Log::warning("Customer not found for booking ID: $id");
+        return;
+    }
+
+    // Driver notification
     $driver = User::find($booking->driver_id);
     if ($driver && !empty($driver->email)) {
         try {
-            $subject = "New Ride Assigned";
-            $message = "You have been assigned a new ride. Please check your dashboard for details.";
+            $data = [
+                'from_email' => Hyvikk::get("email"),
+                'booking_id' => $booking->id,
+                'driver' => $driver,
+                'customer' => $customer, // Pass the full customer object
+                'pickup_date' => $booking->pickup,
+                'pickup_address' => $booking->pickup_addr,
+                'destination_address' => $booking->dest_addr,
+                'travellers' => $booking->travellers,
+                'date_format' => Hyvikk::get('date_format') ?? 'd-m-Y',
+            ];
+            \Log::info("Email data for driver: " . json_encode($data));
 
-            Mail::to($driver->email)->send(new TestMail($message, $subject));
+            Mail::to($driver->email)->send(new DriverBooked($data));
             \Log::info("Email sent to driver ID: {$driver->id} ({$driver->email})");
         } catch (\Exception $e) {
             \Log::error("Error sending email to driver ID: {$driver->id}. Message: " . $e->getMessage());
@@ -1309,35 +1371,25 @@ public function sendBookingNotificationEmail($booking, $id) {
         \Log::error("Driver or driver email not found for booking ID: $id");
     }
 
-    // Handle customer email notification
-    $customerIds = json_decode($booking->customer_id, true);
-    if (is_array($customerIds) && count($customerIds) > 0) {
-        $customer = User::find($customerIds[0]);
+    // Customer notification
+    if ($customer && !empty($customer->email)) {
+        try {
+            $data = [
+                'customer' => $customer,
+                'vehicle' => $booking->vehicle,
+                'pickupDate' => $booking->pickup,
+                'pickupAddr' => $booking->pickup_addr,
+                'destAddr' => $booking->dest_addr,
+                'travellers' => $booking->travellers,
+            ];
 
-        if ($customer && !empty($customer->email)) {
-            try {
-                // Store all required data in one array
-                $data = [
-                    'customer' => $customer,
-                    'vehicle' => $booking->vehicle,
-                    'pickupDate' => $booking->pickup,
-                    'pickupAddr' => $booking->pickup_addr,
-                    'destAddr' => $booking->dest_addr,
-                    'travellers' => $booking->travellers,
-                ];
-
-                // Send the email with the data array
-                Mail::to($customer->email)->send(new VehicleBooked($data));
-
-                \Log::info("Email sent to customer ID: {$customer->id} ({$customer->email})");
-            } catch (\Exception $e) {
-                \Log::error("Error sending email to customer ID: {$customer->id}. Message: " . $e->getMessage());
-            }
-        } else {
-            \Log::warning("Customer or customer email not found for booking ID: $id");
+            Mail::to($customer->email)->send(new VehicleBooked($data));
+            \Log::info("Email sent to customer ID: {$customer->id} ({$customer->email})");
+        } catch (\Exception $e) {
+            \Log::error("Error sending email to customer ID: {$customer->id}. Message: " . $e->getMessage());
         }
     } else {
-        \Log::warning("No valid customer IDs found for booking ID: $id");
+        \Log::warning("Customer or customer email not found for booking ID: $id");
     }
 }
 

@@ -71,8 +71,6 @@
                                 </select>
                             </div>
                         </div>
-                        
-
                         <div class="col-md-4">
                             <div class="form-group">
                                 {!! Form::label('pickup', __('fleet.pickup'), ['class' => 'form-label']) !!}
@@ -97,56 +95,83 @@
                         </div>
                     </div>
                     <div class="row">
-                        @if(Auth::user()->user_type !='O')
+                        @if(Auth::user()->user_type != 'O')
                         <div class="col-md-4">
                             <div class="form-group">
-                              {!! Form::label('vehicle_id',__('fleet.selectVehicle'), ['class' => 'form-label']) !!}
-                              <select id="vehicle_id" name="vehicle_id" class="form-control" required>
-                                <option value="">-</option>
-                                @foreach($vehicles as $vehicle)
-                                <option value="{{$vehicle->id}}" data-driver="{{$vehicle->getMeta('assign_driver_id')}}">{{$vehicle->make_name}} -
-                                  {{$vehicle->model_name}} - {{$vehicle->license_plate}}</option>
-                                @endforeach
-                              </select>
+                                {!! Form::label('vehicle_id', __('fleet.selectVehicle'), ['class' => 'form-label']) !!}
+                                <select id="vehicle_id" name="vehicle_id" class="form-control" required>
+                                    <option value="">-</option>
+                                    @foreach($vehicles as $vehicle)
+                                    <option value="{{$vehicle->id}}" data-driver="{{$vehicle->getMeta('assign_driver_id')}}">
+                                        {{$vehicle->make_name}} - {{$vehicle->model_name}} - {{$vehicle->license_plate}}
+                                    </option>
+                                    @endforeach
+                                </select>
                             </div>
-                          </div>
+                        </div>
                         <div class="col-md-4">
                             <div class="form-group">
                                 {!! Form::label('driver_id', __('fleet.selectDriver'), ['class' => 'form-label']) !!}
                                 <select id="driver_id" name="driver_id" class="form-control" required>
                                     <option value="">-</option>
                                     @foreach ($drivers as $driver)
-                                        @if(Auth::user()->user_type == 'O')
-                                            @if($driver->assigned_admin == Auth::user()->id)
-                                                <option value="{{ $driver->id }}">{{ $driver->name }} @if ($driver->getMeta('is_active') != 1)
-                                                        (@lang('fleet.in_active'))
-                                                    @endif
-                                                </option>
-                                            @endif
-                                        @else
-                                            <option value="{{ $driver->id }}">{{ $driver->name }} @if ($driver->getMeta('is_active') != 1)
-                                                    (@lang('fleet.in_active'))
-                                                @endif
-                                            </option>
+                                    @if(Auth::user()->user_type == 'O')
+                                    @if($driver->assigned_admin == Auth::user()->id)
+                                    <option value="{{ $driver->id }}">
+                                        {{ $driver->name }}
+                                        @if ($driver->getMeta('is_active') != 1)
+                                        (@lang('fleet.in_active'))
                                         @endif
+                                    </option>
+                                    @endif
+                                    @else
+                                    <option value="{{ $driver->id }}">
+                                        {{ $driver->name }}
+                                        @if ($driver->getMeta('is_active') != 1)
+                                        (@lang('fleet.in_active'))
+                                        @endif
+                                    </option>
+                                    @endif
                                     @endforeach
                                 </select>
                             </div>
                         </div>
-@endif
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <!--{!! Form::label('travellers', __('fleet.no_travellers'), ['class' => 'form-label']) !!}-->
-                                <!--{!! Form::number('travellers', 1, ['class' => 'form-control', 'min' => 1]) !!}-->
-                                {!! Form::label('travellers', __('fleet.no_travellers'), ['class' => 'form-label']) !!}
-                                {!! Form::number('travellers', 0, ['class' => 'form-control', 'min' => 1, 'id' => 'travellers']) !!}
+                        @endif
+                        @if (Auth::user()->user_type == 'C')
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    {!! Form::label('d_pickup', __('fleet.pickup_location'), ['class' => 'form-label']) !!}
+                                    <select id="d_pickup" name="d_pickup" class="form-control">
+                                        <option value="">-</option>
+                                        @foreach ($addresses as $address)
+                                        <option value="{{ $address->id }}" data-address="{{ $address->address }}">
+                                            {{ $address->address }}
+                                        </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    {!! Form::label('d_dest', __('fleet.dropoff_location'), ['class' => 'form-label']) !!}
+                                    <select id="d_dest" name="d_dest" class="form-control">
+                                        <option value="">-</option>
+                                        @foreach ($addresses as $address)
+                                        <option value="{{ $address->id }}" data-address="{{ $address->address }}">
+                                            {{ $address->address }}
+                                        </option>
+                                        @endforeach
+                                    </select>
+                                </div>
                             </div>
                         </div>
+                        @endif
                     </div>
-                  
-
-                    {{-- <div class="container mt-5">
-                        <div class="card p-4 shadow-sm">
+                    
+                    <!-- Separate Row for the Towards Section -->
+                    <div class="row mt-4">
+                        <div class="card p-4 shadow-sm w-100" style="margin: 0; width: 100vw;">
                             <h3 class="mb-4">Towards</h3>
                     
                             <!-- Radio Buttons for Home, Office, and RAC -->
@@ -164,321 +189,199 @@
                             </div>
                     
                             <!-- Route Display Section -->
-                            <div id="route_display" class="mt-3" style="display: none;">
-                                <div class="alert alert-info fade" id="route_text"></div>
-                            </div>
-                    
-                            <!-- Google Maps for Pickup and Drop-off for RAC -->
-                            <div id="google_maps_section" class="mt-3" style="display: none;">
-                                <div class="form-group">
-                                    <label for="pickup_location">Pickup Location</label>
-                                    <input type="text" id="pickup_location" class="form-control" placeholder="Pickup Location" readonly>
-                                    <div id="pickup_map" style="height: 300px; margin-top: 10px;"></div>
-                                </div>
-                                <div class="form-group mt-2">
-                                    <label for="dropoff_location">Drop-off Location</label>
-                                    <input type="text" id="dropoff_location" class="form-control" placeholder="Drop-off Location" readonly>
-                                    <div id="dropoff_map" style="height: 300px;  margin-top: 10px;"></div>
+                            @if(isset($route))
+                            <div id="route_display" class="mt-3">
+                                <div class="alert alert-info fade" id="route_text">
+                                    {{ $route }}
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                    
-                    <script src="https://maps.googleapis.com/maps/api/js?key={{ Hyvikk::api('api_key') }}&callback=initMap" async defer></script>
-                    <script>
-                        var pickupMap, dropoffMap;
-                        var pickupMarker, dropoffMarker;
-                    
-                        function initMap() {
-                            // Check if geolocation is available in the user's browser
-                            if (navigator.geolocation) {
-                                navigator.geolocation.getCurrentPosition(function (position) {
-                                    var userLat = position.coords.latitude;
-                                    var userLng = position.coords.longitude;
-                    
-                                    // Initialize the map for pickup and drop-off locations centered on the user's location
-                                    pickupMap = new google.maps.Map(document.getElementById("pickup_map"), {
-                                        center: { lat: userLat, lng: userLng },
-                                        zoom: 13,
-                                    });
-                                    dropoffMap = new google.maps.Map(document.getElementById("dropoff_map"), {
-                                        center: { lat: userLat, lng: userLng },
-                                        zoom: 13,
-                                    });
-                    
-                                    // Add markers to the pickup and drop-off maps for the user's location
-                                    pickupMarker = new google.maps.Marker({
-                                        position: { lat: userLat, lng: userLng },
-                                        map: pickupMap,
-                                        title: "Your Location",
-                                    });
-                    
-                                    dropoffMarker = new google.maps.Marker({
-                                        position: { lat: userLat, lng: userLng },
-                                        map: dropoffMap,
-                                        title: "Your Location",
-                                    });
-                    
-                                    // Handle click on the pickup map to update the text area
-                                    pickupMap.addListener("click", function (e) {
-                                        if (pickupMarker) pickupMarker.setMap(null); // Remove existing marker
-                                        var latLng = e.latLng;
-                                        pickupMarker = new google.maps.Marker({
-                                            position: latLng,
-                                            map: pickupMap,
-                                        });
-                                        document.getElementById("pickup_location").value = "Lat: " + latLng.lat() + ", Lng: " + latLng.lng();
-                                    });
-                    
-                                    // Handle click on the dropoff map to update the text area
-                                    dropoffMap.addListener("click", function (e) {
-                                        if (dropoffMarker) dropoffMarker.setMap(null); // Remove existing marker
-                                        var latLng = e.latLng;
-                                        dropoffMarker = new google.maps.Marker({
-                                            position: latLng,
-                                            map: dropoffMap,
-                                        });
-                                        document.getElementById("dropoff_location").value = "Lat: " + latLng.lat() + ", Lng: " + latLng.lng();
-                                    });
-                    
-                                }, function () {
-                                    alert("Geolocation service failed. Unable to retrieve location.");
-                                });
-                            } else {
-                                alert("Geolocation is not supported by your browser.");
-                            }
-                        }
-                    
-                        document.addEventListener("DOMContentLoaded", function () {
-                            document.querySelectorAll('input[name="booking_type"]').forEach((radio) => {
-                                radio.addEventListener("change", function () {
-                                    const bookingType = this.value;
-                                    const routeDisplay = document.getElementById("route_display");
-                                    const routeText = document.getElementById("route_text");
-                                    const googleMapsSection = document.getElementById("google_maps_section");
-                    
-                                    // Reset the route display and Google Maps section
-                                    routeText.classList.remove("show", "fade");
-                                    googleMapsSection.style.display = "none";
-                                    routeDisplay.style.display = "none"; // Hide route display
-                    
-                                    // Show content based on selected option
-                                    if (bookingType === "Home") {
-                                        routeDisplay.style.display = "block"; // Show the route display
-                                        routeText.textContent = "Going from Office to Home";
-                                        googleMapsSection.style.display = "none"; // Hide Google Maps section
-                                    } else if (bookingType === "Office") {
-                                        routeDisplay.style.display = "block"; // Show the route display
-                                        routeText.textContent = "Going from Home to Office";
-                                        googleMapsSection.style.display = "none"; // Hide Google Maps section
-                                    } else if (bookingType === "RAC") {
-                                        routeDisplay.style.display = "none"; // Hide route display
-                                        googleMapsSection.style.display = "block"; // Show Google Maps section for RAC
-                                    }
-                    
-                                    // Add animation class to fade in
-                                    routeText.classList.add("alert-info", "fade", "show");
-                                });
-                            });
-                        });
-                    </script> --}}
-
-
-                    <div class="container mt-5">
-                        <div class="card p-4 shadow-sm">
-                            <h3 class="mb-4">Towards</h3>
-                    
-                            <!-- Radio Buttons for Home, Office, and RAC -->
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="booking_type" id="home_radio" value="Home">
-                                <label class="form-check-label" for="home_radio">Home</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="booking_type" id="office_radio" value="Office">
-                                <label class="form-check-label" for="office_radio">Office</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="booking_type" id="rac_radio" value="RAC">
-                                <label class="form-check-label" for="rac_radio">RAC</label>
-                            </div>
-                    
-                            <!-- Route Display Section -->
-                            <div id="route_display" class="mt-3" style="display: none;">
-                                <div class="alert alert-info fade" id="route_text"></div>
-                            </div>
+                            @endif
                     
                             <!-- Google Maps for Pickup and Drop-off for RAC -->
-                            <div id="google_maps_section" class="mt-3" style="display: none;">
-                                <div class="form-group">
-                                    <label for="pickup_location">Pickup Location</label>
-                                    <input type="text" id="pickup_location" class="form-control" placeholder="Pickup Location" readonly>
-                                    <label for="dropoff_location">Drop-off Location</label>
-                                    <input type="text" id="dropoff_location" class="form-control" placeholder="Drop-off Location" readonly>
-                                    <!-- Added Bootstrap grid class for responsive layout -->
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <div id="pickup_map" style="height: 300px; margin-top: 10px;"></div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div id="dropoff_map" style="height: 300px; margin-top: 10px;"></div>
-                                        </div>
+                            <div id="google_maps_section" class="mt-3">
+                                <div class="row g-3 align-items-center">
+                                    <!-- Pickup Location -->
+                                    <div class="col-md-6">
+                                        <label for="pickup_location" class="form-label">Pickup Location</label>
+                                        <input type="text" id="pickup_location" name="pickup_location" class="form-control" placeholder="Pickup Location" readonly>
+                                    </div>
+                                    <!-- Dropoff Location -->
+                                    <div class="col-md-6">
+                                        <label for="dropoff_location" class="form-label">Drop-off Location</label>
+                                        <input type="text" id="dropoff_location" name="dropoff_location" class="form-control" placeholder="Drop-off Location" readonly>
+                                    </div>
+                                </div>
+                    
+                                <!-- Maps for Pickup and Dropoff -->
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <div id="pickup_map" style="height: 300px; margin-top: 10px;"></div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div id="dropoff_map" style="height: 300px; margin-top: 10px;"></div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <script src="https://maps.googleapis.com/maps/api/js?key={{ Hyvikk::api('api_key') }}&callback=initMap" async defer></script>
-                    <script>
-                        var pickupMap, dropoffMap;
-                        var pickupMarker, dropoffMarker;
                     
-                        function initMap() {
-                            // Check if geolocation is available in the user's browser
-                            if (navigator.geolocation) {
-                                navigator.geolocation.getCurrentPosition(function (position) {
-                                    var userLat = position.coords.latitude;
-                                    var userLng = position.coords.longitude;
                     
-                                    // Initialize the map for pickup and drop-off locations centered on the user's location
-                                    pickupMap = new google.maps.Map(document.getElementById("pickup_map"), {
-                                        center: { lat: userLat, lng: userLng },
-                                        zoom: 13,
-                                    });
-                                    dropoffMap = new google.maps.Map(document.getElementById("dropoff_map"), {
-                                        center: { lat: userLat, lng: userLng },
-                                        zoom: 13,
-                                    });
+                    <!-- Hidden Fields for Latitude and Longitude -->
+                    <input type="hidden" id="pickup_lat" name="pickup_lat">
+                    <input type="hidden" id="pickup_lng" name="pickup_lng">
+                    <input type="hidden" id="dropoff_lat" name="dropoff_lat">
+                    <input type="hidden" id="dropoff_lng" name="dropoff_lng">
                     
-                                    // Add markers to the pickup and drop-off maps for the user's location
-                                    pickupMarker = new google.maps.Marker({
-                                        position: { lat: userLat, lng: userLng },
-                                        map: pickupMap,
-                                        title: "Your Location",
-                                    });
+                
+                
+                <script src="https://maps.googleapis.com/maps/api/js?key={{ Hyvikk::api('api_key') }}&callback=initMap" async defer></script>
+                <script>
+                    var pickupMap, dropoffMap;
+                    var pickupMarker, dropoffMarker;
+                    var geocoder;
                     
-                                    dropoffMarker = new google.maps.Marker({
-                                        position: { lat: userLat, lng: userLng },
-                                        map: dropoffMap,
-                                        title: "Your Location",
-                                    });
-                    
-                                    // Handle click on the pickup map to update the text area
-                                    pickupMap.addListener("click", function (e) {
-                                        if (pickupMarker) pickupMarker.setMap(null); // Remove existing marker
-                                        var latLng = e.latLng;
-                                        pickupMarker = new google.maps.Marker({
-                                            position: latLng,
-                                            map: pickupMap,
-                                        });
-                                        document.getElementById("pickup_location").value = "Lat: " + latLng.lat() + ", Lng: " + latLng.lng();
-                                    });
-                    
-                                    // Handle click on the dropoff map to update the text area
-                                    dropoffMap.addListener("click", function (e) {
-                                        if (dropoffMarker) dropoffMarker.setMap(null); // Remove existing marker
-                                        var latLng = e.latLng;
-                                        dropoffMarker = new google.maps.Marker({
-                                            position: latLng,
-                                            map: dropoffMap,
-                                        });
-                                        document.getElementById("dropoff_location").value = "Lat: " + latLng.lat() + ", Lng: " + latLng.lng();
-                                    });
-                    
-                                }, function () {
-                                    alert("Geolocation service failed. Unable to retrieve location.");
-                                });
-                            } else {
-                                alert("Geolocation is not supported by your browser.");
-                            }
-                        }
-                    
-                        document.addEventListener("DOMContentLoaded", function () {
-                            document.querySelectorAll('input[name="booking_type"]').forEach((radio) => {
-                                radio.addEventListener("change", function () {
-                                    const bookingType = this.value;
-                                    const routeDisplay = document.getElementById("route_display");
-                                    const routeText = document.getElementById("route_text");
-                                    const googleMapsSection = document.getElementById("google_maps_section");
-                    
-                                    // Reset the route display and Google Maps section
-                                    routeText.classList.remove("show", "fade");
-                                    googleMapsSection.style.display = "none";
-                                    routeDisplay.style.display = "none"; // Hide route display
-                    
-                                    // Show content based on selected option
-                                    if (bookingType === "Home") {
-                                        routeDisplay.style.display = "block"; // Show the route display
-                                        routeText.textContent = "Going from Office to Home";
-                                        googleMapsSection.style.display = "none"; // Hide Google Maps section
-                                    } else if (bookingType === "Office") {
-                                        routeDisplay.style.display = "block"; // Show the route display
-                                        routeText.textContent = "Going from Home to Office";
-                                        googleMapsSection.style.display = "none"; // Hide Google Maps section
-                                    } else if (bookingType === "RAC") {
-                                        routeDisplay.style.display = "none"; // Hide route display
-                                        googleMapsSection.style.display = "block"; // Show Google Maps section for RAC
-                                    }
-                    
-                                    // Add animation class to fade in
-                                    routeText.classList.add("alert-info", "fade", "show");
-                                });
-                            });
+                    document.addEventListener("DOMContentLoaded", function () {
+                    // Get references to the Google Maps section and route display elements
+                    const googleMapsSection = document.getElementById("google_maps_section");
+                    const routeDisplay = document.getElementById("route_display");
+                    const routeText = document.getElementById("route_text");
+
+                    // Ensure the Google Maps section and route display are hidden on page load
+                    googleMapsSection.style.display = "none";
+                    routeDisplay.style.display = "none";
+
+                    // Attach event listeners to all radio buttons
+                    document.querySelectorAll('input[name="booking_type"]').forEach((radio) => {
+                        radio.addEventListener("change", function () {
+                            const bookingType = this.value;
+
+                            // Reset visibility for sections (hide all first)
+                            googleMapsSection.style.display = "none";
+                            routeDisplay.style.display = "none";
+                            routeText.classList.remove("show", "fade");
+
+                            // Show or hide sections based on the selected radio button
+                            if (bookingType === "Home") {
+                                routeDisplay.style.display = "block"; // Display the route information
+                                routeText.textContent = "Going from Office to Home"; // Update route text
+                            } else if (bookingType === "Office") {
+                             routeDisplay.style.display = "block"; // Display the route information
+                             routeText.textContent = "Going from Home to Office"; // Update route text
+                         } else if (bookingType === "RAC") {
+                                googleMapsSection.style.display = "block"; // Display the Google Maps section
+
+                                // Initialize Google Maps only the first time "RAC" is selected
+                                if (!window.mapsInitialized) {
+                                 initMap(); // Call the function to initialize Google Maps
+                                    window.mapsInitialized = true; // Set a flag to prevent reinitialization
+                             }
+                         }
+
+                            // Add animation classes for a smooth fade-in effect
+                            routeText.classList.add("alert-info", "fade", "show");
                         });
-                    </script>
-                    
-                    
-                    
-                    
+                 });
+                });
 
+                /**
+                * Initializes Google Maps for both pickup and drop-off locations.
+                * This function is called only when the "RAC" option is selected.
+                */
+                function initMap() {
+                    // Create a geocoder instance for reverse geocoding
+                    geocoder = new google.maps.Geocoder();
 
-                    @if (Auth::user()->user_type == 'C')
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    {!! Form::label('d_pickup', __('fleet.pickup_addr'), ['class' => 'form-label']) !!}
-                                    <select id="d_pickup" name="d_pickup" class="form-control">
-                                        <option value="">-</option>
-                                        @foreach ($addresses as $address)
-                                            <option value="{{ $address->id }}" data-address="{{ $address->address }}">
-                                                {{ $address->address }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    {!! Form::label('d_dest', __('fleet.dropoff_addr'), ['class' => 'form-label']) !!}
-                                    <select id="d_dest" name="d_dest" class="form-control">
-                                        <option value="">-</option>
-                                        @foreach ($addresses as $address)
-                                            <option value="{{ $address->id }}" data-address="{{ $address->address }}">
-                                                {{ $address->address }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-                    <div class="row">
-                        <!--<div class="col-md-4">-->
-                        <!--    <div class="form-group">-->
-                        <!--        {!! Form::label('pickup_addr', __('fleet.pickup_addr'), ['class' => 'form-label']) !!}-->
-                        <!--        {!! Form::text('pickup_addr', null, ['class' => 'form-control', 'required', 'style' => 'height:100px']) !!}-->
-                        <!--        <div id="pickup_addresses_container">-->
-                                    
-                        <!--        </div>-->
-                        <!--    </div>-->
-                        <!--</div>-->
-                       
-                        <!--<div class="col-md-4">-->
-                        <!--    <div class="form-group">-->
-                        <!--        {!! Form::label('dest_addr', __('fleet.dropoff_addr'), ['class' => 'form-label']) !!}-->
-                        <!--        {!! Form::text('dest_addr', null, ['class' => 'form-control', 'required', 'style' => 'height:100px']) !!}-->
-                        <!--    </div>-->
-                        <!--</div>-->
-                        <div class="col-md-4"  style="display:none">
+                    // Check if geolocation is supported and enabled
+                    if (navigator.geolocation) {
+                        // Get the user's current location
+                        navigator.geolocation.getCurrentPosition(function (position) {
+                            const userLat = position.coords.latitude;
+                         const userLng = position.coords.longitude;
+
+                            // Initialize the pickup location map
+                            pickupMap = new google.maps.Map(document.getElementById("pickup_map"), {
+                                center: { lat: userLat, lng: userLng },
+                                zoom: 13,
+                            });
+
+                            // Initialize the drop-off location map
+                            dropoffMap = new google.maps.Map(document.getElementById("dropoff_map"), {
+                                center: { lat: userLat, lng: userLng },
+                                zoom: 13,
+                            });
+
+                            // Add draggable markers for both maps
+                            pickupMarker = new google.maps.Marker({
+                                position: { lat: userLat, lng: userLng },
+                                map: pickupMap,
+                             title: "Your Location",
+                             draggable: true, // Allow marker to be moved by the user
+                            });
+
+                            dropoffMarker = new google.maps.Marker({
+                                position: { lat: userLat, lng: userLng },
+                             map: dropoffMap,
+                                title: "Your Location",
+                                draggable: true, // Allow marker to be moved by the user
+                            });
+
+                            // Update location fields when the pickup map is clicked
+                            pickupMap.addListener("click", function (e) {
+                                updateLocation(pickupMap, pickupMarker, e.latLng, "pickup_location");
+                            });
+
+                            // Update location fields when the drop-off map is clicked
+                            dropoffMap.addListener("click", function (e) {
+                                updateLocation(dropoffMap, dropoffMarker, e.latLng, "dropoff_location");
+                            });
+
+                            // Update location fields when pickup marker is dragged
+                         pickupMarker.addListener("dragend", function (e) {
+                                updateLocation(pickupMap, pickupMarker, e.latLng, "pickup_location");
+                            });
+
+                            // Update location fields when drop-off marker is dragged
+                            dropoffMarker.addListener("dragend", function (e) {
+                             updateLocation(dropoffMap, dropoffMarker, e.latLng, "dropoff_location");
+                            });
+                        }, function () {
+                            alert("Geolocation service failed. Unable to retrieve location."); // Handle errors
+                     });
+                 } else {
+                        alert("Geolocation is not supported by your browser."); // Browser doesn't support geolocation
+                    }
+                }
+                /**
+                * Updates the input fields and moves the marker when the location is changed.
+                * 
+                * @param {object} map - Google Map instance
+                * @param {object} marker - Marker instance for the map
+                * @param {object} latLng - Latitude and longitude object
+                * @param {string} inputId - ID of the input field to update
+                */
+                function updateLocation(map, marker, latLng, inputId) {
+                    // Move the marker to the new position
+                    marker.setPosition(latLng);
+                    map.panTo(latLng);
+
+                    // Use the Geocoding API to get the address for the new position
+                    geocoder.geocode({ location: latLng }, function (results, status) {
+                        if (status === "OK") {
+                            if (results[0]) {
+                                // Update the input field with the formatted address
+                                document.getElementById(inputId).value = results[0].formatted_address;
+                            } else {
+                                document.getElementById(inputId).value = "No address found for this location";
+                            }
+                        } else {
+                         document.getElementById(inputId).value = "Geocoder failed due to: " + status;
+                        }
+                    });
+                }    
+                </script>
+
+                 {{-- <div class="col-md-4"  style="display:none">
                             <div class="form-group">
                                 {!! Form::label('note', __('fleet.note'), ['class' => 'form-label']) !!}
                                 {!! Form::textarea('note', null, [
@@ -489,43 +392,156 @@
                             </div>
                         </div>
                     </div>
-
-                    {{-- This is old pickup and destination address div  --}}
-                     {{-- <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <div id="pickup_addresses_container"></div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <div id="dropoff_addresses_container"></div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <div id="notes_container"></div>
-                                </div>
-                            </div>
-                        </div>
-                    <hr>
+                    <hr> --}}
                     <div class="row">
                         <div class="form-group col-md-6">
                             {!! Form::label('udf1', __('fleet.add_udf'), ['class' => 'col-xs-5 control-label']) !!}
                             <div class="row">
                                 <div class="col-md-8">
                                     {!! Form::text('udf1', null, ['class' => 'form-control']) !!}
-                                </div> --}}
-                                <div class="col-md-4">
-                                    <button type="button" class="btn btn-info add_udf"> @lang('fleet.add')</button>
                                 </div>
+                                {{-- <div class="col-md-4">
+                                    <button type="button" class="btn btn-info add_udf"> @lang('fleet.add')</button>
+                                </div> --}}
                             </div>
                         </div>
                     </div> 
+                                {{-- <div class="col-md-4">
+                                    <button type="button" class="btn btn-info add_udf"> @lang('fleet.add')</button>
+                                </div> --}}
+                            </div>
+                        </div>
+                    </div>
                     <div class="blank"></div>
                     <div class="col-md-12">
                         {!! Form::submit(__('fleet.save_booking'), ['class' => 'btn btn-success']) !!}
                     </div>
+                    <!-- Hidden input fields for pickup and dropoff locations -->
+                    {{-- <input type="hidden" id="pickup_lat" name="pickup_lat">
+        <input type="hidden" id="pickup_lng" name="pickup_lng">
+        <input type="hidden" id="dropoff_lat" name="dropoff_lat">
+        <input type="hidden" id="dropoff_lng" name="dropoff_lng"> --}}
+
+<script>
+    // Ensure hidden fields are updated when the map markers are moved or clicked
+    var pickupMap, dropoffMap;
+var pickupMarker, dropoffMarker;
+var geocoder;
+
+function initMap() {
+    geocoder = new google.maps.Geocoder();
+
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function (position) {
+            var userLat = position.coords.latitude;
+            var userLng = position.coords.longitude;
+
+            // Initialize maps for pickup and dropoff
+            pickupMap = new google.maps.Map(document.getElementById("pickup_map"), {
+                center: { lat: userLat, lng: userLng },
+                zoom: 13,
+            });
+            dropoffMap = new google.maps.Map(document.getElementById("dropoff_map"), {
+                center: { lat: userLat, lng: userLng },
+                zoom: 13,
+            });
+
+            // Initialize markers for pickup and dropoff
+            pickupMarker = new google.maps.Marker({
+                position: { lat: userLat, lng: userLng },
+                map: pickupMap,
+                title: "Pickup Location",
+                draggable: true, // Allow dragging of marker
+            });
+            dropoffMarker = new google.maps.Marker({
+                position: { lat: userLat, lng: userLng },
+                map: dropoffMap,
+                title: "Dropoff Location",
+                draggable: true, // Allow dragging of marker
+            });
+
+            // Add event listeners to update location on map click or marker drag
+            addMapListeners(pickupMap, pickupMarker, "pickup_location", "pickup_lat", "pickup_lng");
+            addMapListeners(dropoffMap, dropoffMarker, "dropoff_location", "dropoff_lat", "dropoff_lng");
+        }, function () {
+            alert("Geolocation service failed. Unable to retrieve location.");
+        });
+    } else {
+        alert("Geolocation is not supported by your browser.");
+    }
+}
+
+// Function to add listeners for map click and marker drag
+function addMapListeners(map, marker, locationInputId, latInputId, lngInputId) {
+    // On map click
+    map.addListener("click", function (e) {
+        updateLocation(marker, e.latLng, locationInputId, latInputId, lngInputId);
+    });
+
+    // On marker drag
+    marker.addListener("dragend", function (e) {
+        updateLocation(marker, e.latLng, locationInputId, latInputId, lngInputId);
+    });
+}
+
+// Function to update location (address, latitude, longitude)
+function updateLocation(marker, latLng, locationInputId, latInputId, lngInputId) {
+    // Update marker position
+    marker.setPosition(latLng);
+
+    // Update latitude and longitude hidden fields
+    document.getElementById(latInputId).value = latLng.lat();
+    document.getElementById(lngInputId).value = latLng.lng();
+
+    // Get address using Geocoding API
+    geocoder.geocode({ location: latLng }, function (results, status) {
+        if (status === "OK") {
+            if (results[0]) {
+                // Display the formatted address in the location input box
+                document.getElementById(locationInputId).value = results[0].formatted_address;
+
+                // Optionally, you can also update the hidden fields to include the address (if needed)
+                // document.getElementById(locationInputId + "_full").value = results[0].formatted_address;
+            } else {
+                document.getElementById(locationInputId).value = "No address found for this location";
+            }
+        } else {
+            document.getElementById(locationInputId).value = "Geocoder failed due to: " + status;
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    // Initialize Google Maps
+    initMap();
+});
+
+
+
+
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll('input[name="booking_type"]').forEach((radio) => {
+            radio.addEventListener("change", function () {
+                const bookingType = this.value;
+                const googleMapsSection = document.getElementById("google_maps_section");
+
+                // Show or hide the Google Maps section based on booking type
+                googleMapsSection.style.display = bookingType === "RAC" ? "block" : "none";
+            });
+        });
+
+        // Update hidden fields on form submission
+        document.querySelector("form").addEventListener("submit", function () {
+            document.getElementById("pickup_location_hidden").value = document.getElementById("pickup_location").value;
+            document.getElementById("dropoff_location_hidden").value = document.getElementById("dropoff_location").value;
+        });
+    });
+</script>
+
+<!-- Google Maps Script -->
+<script src="https://maps.googleapis.com/maps/api/js?key={{ Hyvikk::api('api_key') }}&callback=initMap" async defer></script>
+
+
                     {!! Form::close() !!}
                 </div>
             </div>
@@ -661,109 +677,6 @@ document.getElementById('vehicle_id').addEventListener('change', function() {
     }
 });
 </script>
-<script>
-let autocompleteInitialized = false;
-
-function initAutocomplete() {
-    autocompleteInitialized = true;
-}
-
-function setupAutocomplete(input) {
-    if (!autocompleteInitialized) return;
-    const autocomplete = new google.maps.places.Autocomplete(input);
-    autocomplete.setFields(['address_components', 'geometry', 'name']);
-}
-
-function createPickupAddressField() {
-    const newAddress = document.createElement('div');
-    newAddress.className = 'pickup-address';
-    newAddress.innerHTML = `
-        <label for="pickup_addr[]" class="form-label">{{ __('fleet.pickup_addr') }}</label>
-        <input type="text" name="pickup_addr[]" class="form-control pickup-addr" required style="height:100px">
-    `;
-    return newAddress;
-}
-
-function createDropoffAddressField() {
-    const newAddress = document.createElement('div');
-    newAddress.className = 'dropoff-address';
-    newAddress.innerHTML = `
-        <label for="dropoff_addr[]" class="form-label">{{ __('fleet.dropoff_addr') }}</label>
-        <input type="text" name="dest_addr[]" class="form-control dropoff-addr" required style="height:100px">
-    `;
-    return newAddress;
-}
-
-
-// create by dheeraj
-function generateOTP() {
-    const otp = Math.floor(100000 + Math.random() * 900000); // Generates a 6-digit OTP
-    return otp;
-}
-
-
-function createNoteField() {
-    const otpValue = generateOTP(); // Generate the OTP
-    
-    
-    const newNote = document.createElement('div');
-    newNote.className = 'note-field';
-    newNote.innerHTML = `
-         <label for="note[]" class="form-label"> OTP </label>
-        <input type="text" name="note[]" class="form-control note" value="${otpValue}" readonly style="height:100px"">
-        <input type="hidden" name="note_hidden[]" value="${otpValue}">
-    `;
-    return newNote;
-}
-// end opt function
-
-// comment by dheeraj
-// function createNoteField() {
-//     const newNote = document.createElement('div');
-//     newNote.className = 'note-field';
-//     newNote.innerHTML = `
-//         <label for="note[]" class="form-label">{{ __('fleet.note') }}</label>
-//         <textarea name="note[]" class="form-control note" required style="height:100px"></textarea>
-//     `;
-//     return newNote;
-// }
-
-document.addEventListener('DOMContentLoaded', function() {
-    const travellersInput = document.getElementById('travellers');
-    const pickupContainer = document.getElementById('pickup_addresses_container');
-    const dropoffContainer = document.getElementById('dropoff_addresses_container');
-    const notesContainer = document.getElementById('notes_container');
-
-    if (travellersInput) {
-        travellersInput.addEventListener('change', function() {
-            const newCount = parseInt(this.value);
-            
-            // Clear existing fields
-            pickupContainer.innerHTML = '';
-            dropoffContainer.innerHTML = '';
-            notesContainer.innerHTML = '';
-
-            // Create new fields based on traveler count
-            for (let i = 0; i < newCount; i++) {
-                const newPickupAddress = createPickupAddressField();
-                const newDropoffAddress = createDropoffAddressField();
-                const newNoteField = createNoteField();
-
-                pickupContainer.appendChild(newPickupAddress);
-                dropoffContainer.appendChild(newDropoffAddress);
-                notesContainer.appendChild(newNoteField);
-                // notesContainer.appendChild(createOTPField());
-
-                setupAutocomplete(newPickupAddress.querySelector('.pickup-addr'));
-                setupAutocomplete(newDropoffAddress.querySelector('.dropoff-addr'));
-            }
-        });
-    }
-});
-</script>
-       <!--<script-->
-       <!--     src="https://maps.googleapis.com/maps/api/js?key={{ Hyvikk::api('api_key') }}&libraries=places&callback=initMap"-->
-       <!--     async defer></script>-->
        <script
     src="https://maps.googleapis.com/maps/api/js?key={{ Hyvikk::api('api_key') }}&libraries=places&callback=initAutocomplete"
     async defer></script>

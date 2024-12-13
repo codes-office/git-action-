@@ -24,9 +24,10 @@ class DriverBooked extends Mailable {
 	 * @return void
 	 */
 	public $booking;
-	public function __construct(Bookings $booking) {
-		$this->booking = $booking;
-	}
+	public function __construct(array $data)
+    {
+        $this->data = $data;
+    }
 
 	/**
 	 * Build the message.
@@ -34,6 +35,8 @@ class DriverBooked extends Mailable {
 	 * @return $this
 	 */
 	public function build() {
-		return $this->from(Hyvikk::get("email"))->subject('Your Vehicle is Booked. Booking ID: ' . $this->booking->id)->markdown('emails.booked_driver');
+		return $this->from(Hyvikk::get("email"))->subject('Ride Booked - Booking ID: ' . $this->data['booking_id'])
+		->markdown('emails.booked_driver')
+		->with('data', $this->data);
 	}
 }
