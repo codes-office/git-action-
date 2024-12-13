@@ -1,26 +1,27 @@
 @component('mail::message')
-# Ride Booked.
+# Ride Booked
 
-Dear {{$booking->driver->name}},
+@if (!empty($data['driver']) && !empty($data['driver']->name))
+    Dear {{ $data['driver']->name }},
+@else
+    Dear Driver,
+@endif
 
-	Your Vehicle is booked for your next journey. Below are the details for your journey.
+Your vehicle has been booked for the upcoming journey. Below are the details:
 
 @component('mail::table')
-@php($date_format_setting=(Hyvikk::get('date_format'))?Hyvikk::get('date_format'):'d-m-Y')
-
 <table>
-	<tr><td>Customer Name: </td><td>{{$booking->customer->name}}</td></tr>
-	<tr><td>Journey Date: </td><td>{{date($date_format_setting,strtotime($booking->pickup))}}</td></tr>
-	<tr><td>Pickup Time: </td><td>{{date('g:i A',strtotime($booking->pickup))}}</td></tr>
-	<tr><td>Pickup Address: </td><td>{{$booking->pickup_addr}}</td></tr>
-	<tr><td>Destination Address: </td><td>{{$booking->dest_addr}}</td></tr>
-	<tr><td>Travellers: </td><td>{{$booking->travellers}}</td></tr>
-
+    <tr><td>Customer Name:</td><td>{{ $data['customer']->name ?? 'N/A' }}</td></tr>
+    <tr><td>Journey Date:</td><td>{{ isset($data['pickup_date']) ? date($data['date_format'], strtotime($data['pickup_date'])) : 'N/A' }}</td></tr>
+    <tr><td>Pickup Time:</td><td>{{ isset($data['pickup_date']) ? date('g:i A', strtotime($data['pickup_date'])) : 'N/A' }}</td></tr>
+    <tr><td>Pickup Address:</td><td>{{ $data['pickup_address'] ?? 'N/A' }}</td></tr>
+    <tr><td>Destination Address:</td><td>{{ $data['destination_address'] ?? 'N/A' }}</td></tr>
+    <tr><td>Travellers:</td><td>{{ $data['travellers'] ?? 'N/A' }}</td></tr>
 </table>
 @endcomponent
 
-We Wish you a happy journey.
+We wish you a happy journey!
 
-Thanks,<br>
+Thanks,  
 {{ config('app.name') }}
 @endcomponent

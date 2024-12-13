@@ -14,6 +14,7 @@ use App\Model\Bookings;
 use Hyvikk;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class VehicleBooked extends Mailable {
 	use SerializesModels;
@@ -23,17 +24,21 @@ class VehicleBooked extends Mailable {
 	 *
 	 * @return void
 	 */
-	public $booking;
-	public function __construct(Bookings $booking) {
-		$this->booking = $booking;
-	}
 
+	public function __construct($data)
+    {
+		$this->data = $data;
+       
+    }
 	/**
 	 * Build the message.
 	 *
 	 * @return $this
 	 */
 	public function build() {
-		return $this->from(Hyvikk::get("email"))->subject('Ride Booked. Booking ID: ' . $this->booking->id)->markdown('emails.booked_customer');
+		return $this->from(Hyvikk::get("email")) ->subject('Ride Booked')
+		->markdown('emails.booked_customer')->with([
+			'data' => $this->data  // Passing the data array to the view
+		]);
 	}
 }

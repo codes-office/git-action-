@@ -28,6 +28,7 @@ use Illuminate\Support\Str;
 use Validator;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
 
 class UsersApi extends Controller {
 
@@ -1151,28 +1152,81 @@ public function driver_login(Request $request) {
 		return $data;
 	}
 
-	public function change_password(Request $request) {
-		$user = User::find($request->get('user_id'));
-		$validation = Validator::make($request->all(), [
-			'new_password' => 'required',
-		]);
-		$errors = $validation->errors();
-		if ($user == null || count($errors) > 0) {
-			$data['success'] = 0;
-			$data['message'] = "Unable to Update Password. Please, Try again Later!";
-			$data['data'] = "";
+	// public function change_password(Request $request) {
 
-		} else {
-			$user->password = bcrypt($request->get('new_password'));
-			$user->save();
-			$data['success'] = 1;
-			$data['message'] = "Your Password has been Updated Successfully.";
-			$data['data'] = "";
 
-		}
-		return $data;
-	}
+	// 	Log::info($request->all());
+	// 	$user = User::find($request->get('user_id'));
+	// 	$validation = Validator::make($request->all(), [
+	// 		'new_password' => 'required',
+	// 	]);
+	// 	$errors = $validation->errors();
+	// 	if ($user == null || count($errors) > 0) {
+	// 		$data['success'] = 0;
+	// 		$data['message'] = "Unable to Update Password. Please, Try again Later!";
+	// 		$data['data'] = "";
 
+	// 	} else {
+	// 		$user->password = bcrypt($request->get('new_password'));
+	// 		$user->save();
+	// 		$data['success'] = 1;
+	// 		$data['message'] = "Your Password has been Updated Successfully.";
+	// 		$data['data'] = "";
+
+	// 	}
+	// 	return $data;
+	// }
+
+	
+
+public function change_password(Request $request) {
+    Log::info($request->all());
+
+    // Validate input
+    $validation = Validator::make($request->all(), [
+        'user_id' => 'required|integer|exists:users,id',
+        'new_password' => 'required|min:8',
+    ]);
+
+    if ($validation->fails()) {
+        return response()->json([
+            'success' => 0,
+            'message' => "Unable to Update Password. Please, Try again Later!",
+            'data' => $validation->errors(),
+        ]);
+    }
+
+    $user = User::find($request->get('user_id'));
+
+    if (!$user) {
+        return response()->json([
+            'success' => 0,
+            'message' => "User not found.",
+            'data' => "",
+        ]);
+    }
+
+    // Check if the new password is the same as the current password
+    if (Hash::check($request->get('new_password'), $user->password)) {
+        return response()->json([
+            'success' => 0,
+            'message' => "The new password cannot be the same as the current password.",
+            'data' => "",
+        ]);
+    }
+
+    // Update the password
+    $user->password = Hash::make($request->get('new_password'));
+    $user->save();
+
+    return response()->json([
+        'success' => 1,
+        'message' => "Your password has been updated successfully.",
+        'data' => "",
+    ]);
+}
+
+	
 	public function message_us(Request $request) {
 		$validation = Validator::make($request->all(), [
 			'message' => 'required',

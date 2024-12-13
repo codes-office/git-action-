@@ -19,5 +19,5 @@ class CustomMailServiceProvider extends MailServiceProvider {
 		$this->app['swift.transport'] = $this->app->share(function ($app) {
 			return new CustomTransportManager($app);
 		});
-	}
+	}  
 }

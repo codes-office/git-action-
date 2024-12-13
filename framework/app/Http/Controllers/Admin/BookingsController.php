@@ -12,7 +12,8 @@ Design and developed by Hyvikk Solutions <https://hyvikk.com/>
 
 namespace App\Http\Controllers\Admin;
 use Illuminate\Support\Facades\Http;
-
+use App\Mail\DynamicMail;
+use Illuminate\Support\Facades\Mail;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\BookingRequest;
 use App\Mail\CustomerInvoice;
@@ -37,14 +38,12 @@ use DataTables;
 use DB;
 use Edujugon\PushNotification\PushNotification;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
 use App\Notifications\BookingStatusUpdated;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
-
+use App\Mail\TestMail;
 
 
 // use App\Services\FirebaseService;
@@ -54,7 +53,7 @@ class BookingsController extends Controller
 
 	public function updateBookingStatus(Request $request, $bookingId)
 	{
-		$booking = Booking::findOrFail($bookingId);
+		$booking = Bookings::findOrFail($bookingId);
 		$booking->status = 'confirmed';
 		$booking->save();
 
@@ -258,7 +257,7 @@ class BookingsController extends Controller
 
 	public function map()
 {
-    $rawData = \DB::table('users_meta')
+    $rawData = DB::table('users_meta')
         ->whereIn('key', ['emsourcelat', 'emsourcelong']) // Filter for latitude and longitude keys
         ->get();
 
@@ -957,384 +956,43 @@ class BookingsController extends Controller
 		}
 
 	}
-	public function book_now(Request $request) {
-		// Validate the request
-		$validation = Validator::make($request->all(), [
-			'user_id' => 'required|exists:users,id',
-			'booking_type' => 'required|in:Home,Office,RAC'
-		]);
-	
-	
-		// Fetch the user and addresses
-		$user = User::find($request->get('user_id'));
-		$homeAddress = $user->address; // User's home address
-		$homelongitude = $user->getMeta('emsourcelat'); // User's home longitude
-		$homelatitude = $user->getMeta('emsourcelong'); // User's home latitude
-	
-		$officeAddress = $user->assigned_admin
-			? User::find($user->assigned_admin)->address ?? 'No Admin Assigned'
-			: 'Company Not Assigned';
-		$officelongitude = $user->assigned_admin
-			? User::find($user->assigned_admin)->getMeta('emsourcelat') ?? 'No Admin Assigned'
-			: 'Company Not Assigned';
-		$officelatitude = $user->assigned_admin
-			? User::find($user->assigned_admin)->getMeta('emsourcelong') ?? 'No Admin Assigned'
-			: 'Company Not Assigned';
-		// Set pickup and destination based on booking_type
-		if ($request->get('booking_type') === 'Home') {
-			$pickupAddress = $officeAddress;
-			$pickuplatitude = $officelatitude;
-			$pickuplongitude = $officelongitude;
-			$destAddress = $homeAddress;
-			$destlatitude = $homelatitude;
-			$destlongitude = $homelongitude;
-	
-		} elseif ($request->get('booking_type') === 'Office') {
-			$pickupAddress = $homeAddress;
-			$pickuplatitude = $homelatitude;
-			$pickuplongitude = $homelongitude;
-			$destAddress = $officeAddress;
-			$destlatitude = $officelatitude;
-			$destlongitude = $officelongitude;
-		} else {
-			$pickupAddress = $request->get('source_address');
-			$pickuplatitude = $request->get('source_lat');
-			$pickuplongitude = $request->get('source_long');	
-			$destAddress = $request->get('dest_address');
-			$destlatitude = $request->get('dest_lat');
-			$destlongitude = $request->get('dest_long');
-		}
-	
-	
-	
-		// Create booking record
-		$booking = Bookings::create([
-			// 'customer_id' => json_encode([$user->id]), // Store user_id as JSON array
-			//   'customer_id' => json_encode([$user->id]), // Store user_id as a JSON array
-			//   'customer_id' => json_encode(['id' => $user->id]), // Store user_id as a JSON object
-			'customer_id' => json_encode([(string)$user->id]), // Store user_id as a JSON array of strings
-	
-			'pickup_addr' => $pickupAddress,
-			'pickup_lat' => $pickuplatitude,
-			'pickup_long' => $pickuplongitude,
-			'dest_addr' => $destAddress,
-			'dest_lat' => $destlatitude,
-			'dest_long' => $destlongitude,
-	
-			// 'dest_lat' => $request->get('dest_lat'),
-			// 'dest_long' => $request->get('dest_long'),
-			'pickup' => $pickupTime , // Stores current date and time
-			
-	
-			'accept_status' => 0,
-			'ride_status' => null,
-			'booking_type' => $request->get('booking_type'), // booking type
-		]);
-	
-		$book = Bookings::find($booking->id);
-		$book->source_time = $pickupTime;
-		$book->pickup_lat = $pickuplatitude; 
-		$book->pickup_long = $pickuplongitude;
-		$book->dest_lat = $destlatitude;
-		$book->dest_long = $destlongitude;	
-		$book->ride_status = null;
-		$book->accept_status= 0;
-		$book->booking_type = 1;
-		$book->save();
-		
-		 Log::info('New Booking Created', [
-			'user_id' => $user->id,
-			'user_name' => $user->name,
-			'booking_id' => $booking->id,
-			'pickup_address' => $pickupAddress,
-			'pickup_lat' => $pickuplatitude,
-			'pickup_long' => $pickuplongitude,
-			'destination_address' => $destAddress,
-			'destination_lat' => $destlatitude,
-			'destination_long' => $destlongitude,
-			'pickup_time' => $pickupTime,
-			'booking_type' => $request->get('booking_type'),
-		]);
-	
-		// Send notification (optional)
-		$this->book_now_notification($booking->id, $request->vehicle_typeid);
-	
-		return response()->json([
-			'success' => 1,
-			'message' => "Your Request has been Submitted Successfully.",
-			'data' => ['booking_id' => $booking->id]
-		], 201);
 
-
-	}
-
-
-	// public function store(BookingRequest $request)
-	// {
-	// 	// \Log::info('ENTER TO BACKEND');
-	// 	// var_dump($request->all());
-	// 	// exit;
-	
-	// 	// Validation for user IDs and booking type
-	// 	$validation = Validator::make($request->all(), [
-	// 		'customer_id' => 'required|array',
-	// 		'customer_id.*' => 'required|exists:users,id',
-	// 		'booking_type' => 'required|in:Home,Office,RAC',
-	// 	]);
-	
-	// 	if ($validation->fails()) {
-	// 		return response()->json([
-	// 			'success' => 0,
-	// 			'message' => 'Validation Error',
-	// 			'errors' => $validation->errors()
-	// 		], 422);
-	// 	}
-	
-	// 	// Decode customer_id array
-	// 	$userIds = $request->get('customer_id'); // This will be an array of user IDs
-	// 	$bookingType = $request->get('booking_type');
-	// 	$bookings = [];
-	
-	// 	foreach ($userIds as $userId) {
-	// 		// Fetch the user and addresses
-	// 		$user = User::find($userId);
-	// 		if (!$user) {
-	// 			return response()->json([
-	// 				'success' => 0,
-	// 				'message' => "User with ID $userId not found."
-	// 			], 404);
-	// 		}
-	
-	// 		$homeAddress = $user->address; // User's home address
-	// 		$homelongitude = $user->getMeta('emsourcelat'); // User's home longitude
-	// 		$homelatitude = $user->getMeta('emsourcelong'); // User's home latitude
-	
-	// 		$officeAddress = $user->assigned_admin
-	// 			? User::find($user->assigned_admin)->address ?? 'No Admin Assigned'
-	// 			: 'Company Not Assigned';
-	// 		$officelongitude = $user->assigned_admin
-	// 			? User::find($user->assigned_admin)->getMeta('emsourcelat') ?? 'No Admin Assigned'
-	// 			: 'Company Not Assigned';
-	// 		$officelatitude = $user->assigned_admin
-	// 			? User::find($user->assigned_admin)->getMeta('emsourcelong') ?? 'No Admin Assigned'
-	// 			: 'Company Not Assigned';
-	
-	// 		// Set pickup and destination based on booking_type
-	// 		if ($bookingType === 'Home') {
-	// 			$pickupAddress = $officeAddress;
-	// 			$pickuplatitude = $officelatitude;
-	// 			$pickuplongitude = $officelongitude;
-	// 			$destAddress = $homeAddress;
-	// 			$destlatitude = $homelatitude;
-	// 			$destlongitude = $homelongitude;
-	// 		} elseif ($bookingType === 'Office') {
-	// 			$pickupAddress = $homeAddress;
-	// 			$pickuplatitude = $homelatitude;
-	// 			$pickuplongitude = $homelongitude;
-	// 			$destAddress = $officeAddress;
-	// 			$destlatitude = $officelatitude;
-	// 			$destlongitude = $officelongitude;
-	// 		} else {
-	// 			$pickupAddress = $request->get('pickup_location');
-	// 			$pickuplatitude = $request->get('pickup_lat');
-	// 			$pickuplongitude = $request->get('pickup_lng');
-	// 			$destAddress = $request->get('dropoff_location');
-	// 			$destlatitude = $request->get('dropoff_lat');
-	// 			$destlongitude = $request->get('dropoff_lng');
-	// 		}
-	
-	// 		// Create booking record for each user
-	// 		$booking = Bookings::create([
-	// 			'customer_id' => json_encode([(string)$user->id]), // Store user_id as a JSON array of strings
-	// 			'pickup_addr' => $pickupAddress,
-	// 			'pickup_lat' => $pickuplatitude,
-	// 			'pickup_long' => $pickuplongitude,
-	// 			'dest_addr' => $destAddress,
-	// 			'dest_lat' => $destlatitude,
-	// 			'dest_long' => $destlongitude,
-	// 			'pickup' => now(), // Stores current date and time
-	// 			'accept_status' => 0,
-	// 			'ride_status' => null,
-	// 			'booking_type' => $bookingType,
-	// 		]);
-	
-	// 		// Log booking details
-	// 		Log::info('New Booking Created', [
-	// 			'user_id' => $user->id,
-	// 			'user_name' => $user->name,
-	// 			'booking_id' => $booking->id,
-	// 			'pickup_address' => $pickupAddress,
-	// 			'pickup_lat' => $pickuplatitude,
-	// 			'pickup_long' => $pickuplongitude,
-	// 			'destination_address' => $destAddress,
-	// 			'destination_lat' => $destlatitude,
-	// 			'destination_long' => $destlongitude,
-	// 			'pickup_time' => now(),
-	// 			'booking_type' => $bookingType,
-	// 		]);
-	
-	// 		$bookings[] = ['booking_id' => $booking->id];
-	// 	}
-	
-	// 	// Send notification for each booking (optional)
-	// 	foreach ($bookings as $booking) {
-	// 		$this->push_notification($booking['booking_id'], $request->vehicle_typeid);
-	// 	}
-	
-	// 	return response()->json([
-	// 		'success' => 1,
-	// 		'message' => "Your Requests have been Submitted Successfully.",
-	// 		'data' => $bookings
-	// 	], 201);
-	// }
-	
-
-
-
-// 	public function store(BookingRequest $request)
-// {
-//     \Log::info('ENTER TO BACKEND');
-//     \Log::info($request->all());
-//     exit;
-
-//     // Validation for user IDs and booking type
-//     // $validation = Validator::make($request->all(), [
-//     //     'customer_ids' => 'required|array',
-//     //     'customer_ids.*' => 'required|exists:users,id',
-//     //     'booking_type' => 'required|in:Home,Office,RAC',
-//     // ]);
-
-//     // if ($validation->fails()) {
-//     //     return response()->json([
-//     //         'success' => 0,
-//     //         'message' => 'Validation Error',
-//     //         'errors' => $validation->errors()
-//     //     ], 422);
-//     // }
-
-//     $userIds = $request->get('customer_id');
-//     $bookingType = $request->get('booking_type');
-//     $bookings = [];
-
-//     foreach ($userIds as $userId) {
-//         // Fetch the user and addresses
-//         $user = User::find($userId);
-//         $homeAddress = $user->address; // User's home address
-//         $homelongitude = $user->getMeta('emsourcelat'); // User's home longitude
-//         $homelatitude = $user->getMeta('emsourcelong'); // User's home latitude
-
-//         $officeAddress = $user->assigned_admin
-//             ? User::find($user->assigned_admin)->address ?? 'No Admin Assigned'
-//             : 'Company Not Assigned';
-//         $officelongitude = $user->assigned_admin
-//             ? User::find($user->assigned_admin)->getMeta('emsourcelat') ?? 'No Admin Assigned'
-//             : 'Company Not Assigned';
-//         $officelatitude = $user->assigned_admin
-//             ? User::find($user->assigned_admin)->getMeta('emsourcelong') ?? 'No Admin Assigned'
-//             : 'Company Not Assigned';
-
-//         // Set pickup and destination based on booking_type
-//         if ($bookingType === 'Home') {
-//             $pickupAddress = $officeAddress;
-//             $pickuplatitude = $officelatitude;
-//             $pickuplongitude = $officelongitude;
-//             $destAddress = $homeAddress;
-//             $destlatitude = $homelatitude;
-//             $destlongitude = $homelongitude;
-//         } elseif ($bookingType === 'Office') {
-//             $pickupAddress = $homeAddress;
-//             $pickuplatitude = $homelatitude;
-//             $pickuplongitude = $homelongitude;
-//             $destAddress = $officeAddress;
-//             $destlatitude = $officelatitude;
-//             $destlongitude = $officelongitude;
-//         } else {
-//             $pickupAddress = $request->get('source_address');
-//             $pickuplatitude = $request->get('source_lat');
-//             $pickuplongitude = $request->get('source_long');
-//             $destAddress = $request->get('dest_address');
-//             $destlatitude = $request->get('dest_lat');
-//             $destlongitude = $request->get('dest_long');
-//         }
-
-//         // Create booking record for each user
-//         $booking = Bookings::create([
-//             'customer_id' => json_encode([(string)$user->id]), // Store user_id as a JSON array of strings
-//             'pickup_addr' => $pickupAddress,
-//             'pickup_lat' => $pickuplatitude,
-//             'pickup_long' => $pickuplongitude,
-//             'dest_addr' => $destAddress,
-//             'dest_lat' => $destlatitude,
-//             'dest_long' => $destlongitude,
-//             'pickup' => now(), // Stores current date and time
-//             'accept_status' => 0,
-//             'ride_status' => null,
-//             'booking_type' => $bookingType,
-//         ]);
-
-//         // Log booking details
-//         Log::info('New Booking Created', [
-//             'user_id' => $user->id,
-//             'user_name' => $user->name,
-//             'booking_id' => $booking->id,
-//             'pickup_address' => $pickupAddress,
-//             'pickup_lat' => $pickuplatitude,
-//             'pickup_long' => $pickuplongitude,
-//             'destination_address' => $destAddress,
-//             'destination_lat' => $destlatitude,
-//             'destination_long' => $destlongitude,
-//             'pickup_time' => now(),
-//             'booking_type' => $bookingType,
-//         ]);
-
-//         $bookings[] = ['booking_id' => $booking->id];
-//     }
-
-//     // Send notification for each booking (optional)
-//     foreach ($bookings as $booking) {
-//         $this->push_notification($booking['booking_id'], $request->vehicle_typeid);
-//     }
-
-//     return response()->json([
-//         'success' => 1,
-//         'message' => "Your Requests have been Submitted Successfully.",
-//         'data' => $bookings
-//     ], 201);
-// }
-
+	public function store(BookingRequest $request)
+	{
+		 Log::info($request->all());
 		// Validate booking
-	// 	$xx = $this->check_booking($request->get("pickup"), $request->get("dropoff"), $request->get("vehicle_id"));
-	// 	if ($xx) {
-	// 		// Prepare booking data
-	// 		$bookingData = $request->except(['pickup_addr', 'dest_addr', 'note', 'udf']); // Exclude arrays from booking creation
-	// 		$customerIds = $request->input('customer_id', []);
-	// 		$bookingData['customer_id'] = json_encode($customerIds);
-	// 		// Serialize array fields
-	// 		// $bookingData['pickup_addr'] = serialize($request->get('pickup_addr'));
-	// 		// $bookingData['dest_addr'] = serialize($request->get('dest_addr'));
-	// 		// $bookingData['note'] = serialize($request->get('note'));
-	// 		$travellers = intval($request->get('travellers', 1));
-	// 		if ($travellers > 1) {
-	// 			// Create objects for multiple travelers
-	// 			$pickupAddrs = [];
-	// 			$destAddrs = [];
-	// 			$notes = [];
+		$xx = $this->check_booking($request->get("pickup"), $request->get("dropoff"), $request->get("vehicle_id"));
+		if ($xx) {
+			// Prepare booking data
+			$bookingData = $request->except(['pickup_addr', 'dest_addr', 'note', 'udf']); // Exclude arrays from booking creation
+			$customerIds = $request->input('customer_id', []);
+			$bookingData['customer_id'] = json_encode($customerIds);
+			// Serialize array fields
+			// $bookingData['pickup_addr'] = serialize($request->get('pickup_addr'));
+			// $bookingData['dest_addr'] = serialize($request->get('dest_addr'));
+			// $bookingData['note'] = serialize($request->get('note'));
+			$travellers = intval($request->get('travellers', 1));
+			if ($travellers > 1) {
+				// Create objects for multiple travelers
+				$pickupAddrs = [];
+				$destAddrs = [];
+				$notes = [];
 
-	// 			for ($i = 0; $i < $travellers; $i++) {
-	// 				$pickupAddrs["pickup_add" . ($i + 1)] = $request->get('pickup_addr')[$i] ?? '';
-	// 				$destAddrs["dest_addr" . ($i + 1)] = $request->get('dest_addr')[$i] ?? '';
-	// 				$notes["note" . ($i + 1)] = $request->get('note')[$i] ?? '';
-	// 			}
+				for ($i = 0; $i < $travellers; $i++) {
+					$pickupAddrs["pickup_add" . ($i + 1)] = $request->get('pickup_addr')[$i] ?? '';
+					$destAddrs["dest_addr" . ($i + 1)] = $request->get('dest_addr')[$i] ?? '';
+					$notes["note" . ($i + 1)] = $request->get('note')[$i] ?? '';
+				}
 
-	// 			$bookingData['pickup_addr'] = json_encode($pickupAddrs);
-	// 			$bookingData['dest_addr'] = json_encode($destAddrs);
-	// 			$bookingData['note'] = json_encode($notes);
-	// 		} else {
-	// 			// For single traveler, keep the original array structure
-	// 			$bookingData['pickup_addr'] = json_encode($request->get('pickup_addr'));
-	// 			$bookingData['dest_addr'] = json_encode($request->get('dest_addr'));
-	// 			$bookingData['note'] = json_encode($request->get('note'));
-	// 		}
+				$bookingData['pickup_addr'] = json_encode($pickupAddrs);
+				$bookingData['dest_addr'] = json_encode($destAddrs);
+				$bookingData['note'] = json_encode($notes);
+			} else {
+				// For single traveler, keep the original array structure
+				$bookingData['pickup_addr'] = json_encode($request->get('pickup_addr'));
+				$bookingData['dest_addr'] = json_encode($request->get('dest_addr'));
+				$bookingData['note'] = json_encode($request->get('note'));
+			}
 
 	// 		$bookingData['udf'] = serialize($request->get('udf'));
 	// 		// var_dump($bookingData);
@@ -1368,10 +1026,10 @@ class BookingsController extends Controller
 	// 		// $this->sms_notification($booking->id);
 	// 		// $this->push_notification($booking->id);
 
-	// 		// if (Hyvikk::email_msg('email') == 1) {
-	// 		//     Mail::to($booking->customer->email)->send(new VehicleBooked($booking));
-	// 		//     Mail::to($booking->driver->email)->send(new DriverBooked($booking));
-	// 		// }
+			// if (Hyvikk::email_msg('email') == 1) {
+			    Mail::to($booking->customer->email)->send(new VehicleBooked($booking));
+			    Mail::to($booking->driver->email)->send(new DriverBooked($booking));
+			// }
 
 	// 		return redirect()->route("bookings.index");
 	// 	} else {
@@ -1585,7 +1243,11 @@ class BookingsController extends Controller
 
 			// Call the booking_notification method to send notification
 			$this->booking_notification($booking->id);
-
+			\Log::info('this is from update function');
+			// Mail::to($booking->driver->email)->send(new DriverBooked($booking));
+			// // Call the sendBookingNotificationEmail method to send email
+			$this->sendBookingNotificationEmail($booking , $booking->id);
+			
 			return redirect()->route('bookings.index');
 		} catch (\Exception $e) {
 			\Log::error('Error updating booking: ' . $e->getMessage());
@@ -1595,6 +1257,107 @@ class BookingsController extends Controller
 				->withInput();
 		}
 	}
+	
+	public function sendCustomMail(Request $request)
+	{
+		$email = $request->input('email'); // Receiver email
+		$title = $request->input('title', 'Default Title'); // Email title
+		$subject = $request->input('subject', 'Default Subject'); // Email subject
+		$body = $request->input('body', 'This is the default body content'); // Email body
+		$footer = $request->input('footer', 'This is the default footer'); // Email footer
+	
+		try {
+			Mail::to($email)->send(new DynamicMail($title, $subject, $body, $footer));
+			return response()->json(['message' => 'Email sent successfully'], 200);
+		} catch (\Exception $e) {
+			return response()->json(['error' => 'Email sending failed: ' . $e->getMessage()], 500);
+		}
+	}
+	
+	public function testMail(Request $request)
+{
+	$testMail = 'dheerajdp777@gmail.com';
+	$testMessage = "test message";
+	$subject = "test subject";
+
+	Mail::to($testMail)->send(new TestMail($testMessage , $subject));
+}
+
+public function sendBookingNotificationEmail($booking, $id) {
+    \Log::info('Email notification function called');
+
+    // Find the booking record
+    $booking = Bookings::find($id);
+
+    if (!$booking) {
+        \Log::error("Booking not found for ID: $id");
+        return;
+    }
+
+    // Decode customer IDs
+    $customerIds = json_decode($booking->customer_id, true);
+
+    // Ensure customer IDs is an array
+    if (!is_array($customerIds) || count($customerIds) === 0) {
+        \Log::warning("No valid customer IDs found for booking ID: $id");
+        return;
+    }
+
+    // Retrieve the first customer
+    $customer = User::find($customerIds[0]);
+    if (!$customer) {
+        \Log::warning("Customer not found for booking ID: $id");
+        return;
+    }
+
+    // Driver notification
+    $driver = User::find($booking->driver_id);
+    if ($driver && !empty($driver->email)) {
+        try {
+            $data = [
+                'from_email' => Hyvikk::get("email"),
+                'booking_id' => $booking->id,
+                'driver' => $driver,
+                'customer' => $customer, // Pass the full customer object
+                'pickup_date' => $booking->pickup,
+                'pickup_address' => $booking->pickup_addr,
+                'destination_address' => $booking->dest_addr,
+                'travellers' => $booking->travellers,
+                'date_format' => Hyvikk::get('date_format') ?? 'd-m-Y',
+            ];
+            \Log::info("Email data for driver: " . json_encode($data));
+
+            Mail::to($driver->email)->send(new DriverBooked($data));
+            \Log::info("Email sent to driver ID: {$driver->id} ({$driver->email})");
+        } catch (\Exception $e) {
+            \Log::error("Error sending email to driver ID: {$driver->id}. Message: " . $e->getMessage());
+        }
+    } else {
+        \Log::error("Driver or driver email not found for booking ID: $id");
+    }
+
+    // Customer notification
+    if ($customer && !empty($customer->email)) {
+        try {
+            $data = [
+                'customer' => $customer,
+                'vehicle' => $booking->vehicle,
+                'pickupDate' => $booking->pickup,
+                'pickupAddr' => $booking->pickup_addr,
+                'destAddr' => $booking->dest_addr,
+                'travellers' => $booking->travellers,
+            ];
+
+            Mail::to($customer->email)->send(new VehicleBooked($data));
+            \Log::info("Email sent to customer ID: {$customer->id} ({$customer->email})");
+        } catch (\Exception $e) {
+            \Log::error("Error sending email to customer ID: {$customer->id}. Message: " . $e->getMessage());
+        }
+    } else {
+        \Log::warning("Customer or customer email not found for booking ID: $id");
+    }
+}
+
 
 
 	public function prev_address(Request $request)
@@ -1806,7 +1569,7 @@ class BookingsController extends Controller
 //         Log::info('Income record deleted');
 //     }
 
-	//     // // Send emails
+	//     // // Send emails  
 //     // if (Hyvikk::email_msg('email') == 1) {
 //     //     Mail::to($booking->customer->email)->send(new BookingCancelled($booking, $booking->customer->name));
 //     //     Mail::to($booking->driver->email)->send(new BookingCancelled($booking, $booking->driver->name));
