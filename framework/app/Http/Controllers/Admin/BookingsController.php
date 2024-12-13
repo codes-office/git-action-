@@ -1028,7 +1028,7 @@ class BookingsController extends Controller
 
 			// if (Hyvikk::email_msg('email') == 1) {
 			    Mail::to($booking->customer->email)->send(new VehicleBooked($booking));
-			//     Mail::to($booking->driver->email)->send(new DriverBooked($booking));
+			    Mail::to($booking->driver->email)->send(new DriverBooked($booking));
 			// }
 
 			return redirect()->route("bookings.index");
@@ -1244,8 +1244,8 @@ class BookingsController extends Controller
 			// Call the booking_notification method to send notification
 			$this->booking_notification($booking->id);
 			\Log::info('this is from update function');
-
-			// Call the sendBookingNotificationEmail method to send email
+			// Mail::to($booking->driver->email)->send(new DriverBooked($booking));
+			// // Call the sendBookingNotificationEmail method to send email
 			$this->sendBookingNotificationEmail($booking , $booking->id);
 			
 			return redirect()->route('bookings.index');
@@ -1282,6 +1282,7 @@ class BookingsController extends Controller
 
 	Mail::to($testMail)->send(new TestMail($testMessage , $subject));
 }
+
 public function sendBookingNotificationEmail($booking, $id) {
     \Log::info('Email notification function called');
 
@@ -1293,14 +1294,40 @@ public function sendBookingNotificationEmail($booking, $id) {
         return;
     }
 
-    // Find the driver
+    // Decode customer IDs
+    $customerIds = json_decode($booking->customer_id, true);
+
+    // Ensure customer IDs is an array
+    if (!is_array($customerIds) || count($customerIds) === 0) {
+        \Log::warning("No valid customer IDs found for booking ID: $id");
+        return;
+    }
+
+    // Retrieve the first customer
+    $customer = User::find($customerIds[0]);
+    if (!$customer) {
+        \Log::warning("Customer not found for booking ID: $id");
+        return;
+    }
+
+    // Driver notification
     $driver = User::find($booking->driver_id);
     if ($driver && !empty($driver->email)) {
         try {
-            $subject = "New Ride Assigned";
-            $message = "You have been assigned a new ride. Please check your dashboard for details.";
+            $data = [
+                'from_email' => Hyvikk::get("email"),
+                'booking_id' => $booking->id,
+                'driver' => $driver,
+                'customer' => $customer, // Pass the full customer object
+                'pickup_date' => $booking->pickup,
+                'pickup_address' => $booking->pickup_addr,
+                'destination_address' => $booking->dest_addr,
+                'travellers' => $booking->travellers,
+                'date_format' => Hyvikk::get('date_format') ?? 'd-m-Y',
+            ];
+            \Log::info("Email data for driver: " . json_encode($data));
 
-            Mail::to($driver->email)->send(new TestMail($message, $subject));
+            Mail::to($driver->email)->send(new DriverBooked($data));
             \Log::info("Email sent to driver ID: {$driver->id} ({$driver->email})");
         } catch (\Exception $e) {
             \Log::error("Error sending email to driver ID: {$driver->id}. Message: " . $e->getMessage());
@@ -1309,35 +1336,25 @@ public function sendBookingNotificationEmail($booking, $id) {
         \Log::error("Driver or driver email not found for booking ID: $id");
     }
 
-    // Handle customer email notification
-    $customerIds = json_decode($booking->customer_id, true);
-    if (is_array($customerIds) && count($customerIds) > 0) {
-        $customer = User::find($customerIds[0]);
+    // Customer notification
+    if ($customer && !empty($customer->email)) {
+        try {
+            $data = [
+                'customer' => $customer,
+                'vehicle' => $booking->vehicle,
+                'pickupDate' => $booking->pickup,
+                'pickupAddr' => $booking->pickup_addr,
+                'destAddr' => $booking->dest_addr,
+                'travellers' => $booking->travellers,
+            ];
 
-        if ($customer && !empty($customer->email)) {
-            try {
-                // Store all required data in one array
-                $data = [
-                    'customer' => $customer,
-                    'vehicle' => $booking->vehicle,
-                    'pickupDate' => $booking->pickup,
-                    'pickupAddr' => $booking->pickup_addr,
-                    'destAddr' => $booking->dest_addr,
-                    'travellers' => $booking->travellers,
-                ];
-
-                // Send the email with the data array
-                Mail::to($customer->email)->send(new VehicleBooked($data));
-
-                \Log::info("Email sent to customer ID: {$customer->id} ({$customer->email})");
-            } catch (\Exception $e) {
-                \Log::error("Error sending email to customer ID: {$customer->id}. Message: " . $e->getMessage());
-            }
-        } else {
-            \Log::warning("Customer or customer email not found for booking ID: $id");
+            Mail::to($customer->email)->send(new VehicleBooked($data));
+            \Log::info("Email sent to customer ID: {$customer->id} ({$customer->email})");
+        } catch (\Exception $e) {
+            \Log::error("Error sending email to customer ID: {$customer->id}. Message: " . $e->getMessage());
         }
     } else {
-        \Log::warning("No valid customer IDs found for booking ID: $id");
+        \Log::warning("Customer or customer email not found for booking ID: $id");
     }
 }
 

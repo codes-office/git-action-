@@ -708,7 +708,7 @@ public function upcomingRides(Request $request)
         $data['success'] = 1;
         $data['message'] = "Data Received.";
         $data['data'] = [
-            'upcoming_rides' => $u_rides,
+            'rides' => $u_rides,
             // 'completed_rides' => $c_rides,
             // 'cancelled_rides' => $cancel,
         ];
@@ -776,7 +776,7 @@ public function completedRides(Request $request)
         $data['message'] = "Data Received.";
         $data['data'] = [
             // 'upcoming_rides' => $u_rides,
-            'completed_rides' => $c_rides,
+            'rides' => $c_rides,
             // 'cancelled_rides' => $cancel,
         ];
     }
@@ -844,7 +844,7 @@ public function cancelledRides(Request $request)
         $data['data'] = [
             // 'upcoming_rides' => $u_rides,
             // 'completed_rides' => $c_rides,
-            'cancelled_rides' => $cancel,
+            'rides' => $cancel,
         ];
     }
     return $data;
